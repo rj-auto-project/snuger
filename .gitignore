@@ -1,0 +1,76 @@
+# Node modules
+node_modules/
+
+# Log files
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependency directories
+bower_components/
+jspm_packages/
+
+# Build output directories
+dist/
+build/
+out/
+/data
+/Backend\bun.lockb
+/Frontend\bun.lockb
+
+# Temporary files and folders
+temp/
+.tmp/
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Environment variables
+
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# OS generated files
+*.DS_Store
+*.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+*.swp
+*.lock
+*.pyc
+*.pyo
+*.pid
+*.seed
+*.backup
+*.cache
+*.backup
+*.log
+*.log.*
+
+
+# Optional npm cache directory
+.npm/
+
+# Optional eslint cache
+.eslintcache
+
+# MacOS
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+venv
