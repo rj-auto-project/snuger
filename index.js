@@ -1,3 +1,4 @@
+const credentials = require('./credentials');
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
@@ -6,8 +7,8 @@ const userRoute = require("./routes/user");
 
 const { Storage } = require("@google-cloud/storage");
 const storage = new Storage({
-  keyFilename: path.join(__dirname, "./ardent-seeker-444310-t3-47fb9474dbf9.json"),
-  projectId: "ardent-seeker-444310-t3",
+  projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+  credentials:credentials,
 });
 const bucketName = "snuger";
 
@@ -17,7 +18,7 @@ const upload = multer({
   storage: multer.memoryStorage(),
 });
 
-const mongoURI = "mongodb+srv://snuger:PxN9s0EFjLP2bjrh@snuger.juypt.mongodb.net/snuger?retryWrites=true&w=majority&appName=snuger";
+const mongoURI = process.env.MONGOURI;
 mongoose.connect(mongoURI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
