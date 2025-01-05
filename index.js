@@ -31,7 +31,7 @@ app.use(express.urlencoded({ extended: false }));
 // register user route
 app.use("/user", userRoute(upload, storage, bucketName));
 
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
