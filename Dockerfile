@@ -5,13 +5,13 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Copy package.json and package-lock.json to install dependencies
-COPY src/package*.json ./
+COPY package*.json ./
 
 # Install only production dependencies
 RUN npm install --production
 
-# Copy only necessary files (to minimize image size)
-COPY src /app
+# Copy the rest of the application files
+COPY . .
 
 # Expose the port (default for Fastify is 3000)
 EXPOSE 3000
