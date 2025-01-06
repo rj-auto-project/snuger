@@ -1,20 +1,46 @@
-# Use a smaller Node.js Alpine image
-FROM node:18-alpine
+# Base image for setting up the environment
+FROM node:18-alpine AS base
 
-# Set the working directory in the container
+# Setup dependencies
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy package.json and package-lock.json to install dependencies
-COPY package*.json ./
-
-# Install only production dependencies
+# Install dependencies using npm
+COPY package.json package-lock.json ./
 RUN npm install
 
-# Copy the rest of the application files
+# Build the application
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Expose the port (default for Fastify is 3000)
+# Prepare production image
+FROM base AS runner
+WORKDIR /app
+
+# Set environment variables for production
+ENV NODE_ENV production
+ENV NEXT_TELEMETRY_DISABLED 1
+
+# Add a non-root user for security
+RUN addgroup --system --gid 1001 fastify
+RUN adduser --system --uid 1001 fastifyuser
+
+# Copy application files to production stage
+COPY --from=builder /app /app
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+
+# Set user for running the application
+USER fastifyuser
+
+# Expose port 3000
 EXPOSE 3000
 
-# Run the application
+# Set application port
+ENV PORT 3000
+
+# Start the application
 CMD ["npm", "start"]
