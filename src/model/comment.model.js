@@ -1,30 +1,22 @@
-var mongoose = require("mongoose"),
-  Schema = mongoose.Schema;
+import mongoose from "mongoose";
 
-/**
- *comment schema
- */
-var commentSchema = new Schema(
+const commentSchema = new mongoose.Schema(
   {
-    snug_id: {
-      type: String,
+    postId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Post",
       required: true,
     },
-    comment_id: {
-      type: String,
-      required: true,
-      unique: true,
-    },
-    user_id: {
-      type: String,
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       required: true,
     },
-    reply: {
-      type: [{ String: String }],
-      default: [0],
-    },
+    content: { type: String, required: true },
+    likes: { type: Number, default: 0 },
+    replies: [{ type: mongoose.Schema.Types.ObjectId, ref: "Comment" }],
   },
-  { collection: "comment" }
+  { timestamps: true }
 );
 
-module.exports = mongoose.model("Comment", commentSchema);
+export const Comment = mongoose.model("Comment", commentSchema);
