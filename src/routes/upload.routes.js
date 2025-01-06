@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const User = require("../model/user.model");
+const User = require("../model/user.model.js");
 
 module.exports = (upload, storage, bucketName) => {
   router.post("/add", upload.single("image"), async (req, res) => {

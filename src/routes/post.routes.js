@@ -1,4 +1,4 @@
-import { createPost, getPosts } from "../controllers/post.controller";
+import { createPost, getPosts } from "../controllers/post.controller.js";
 
 export const postRoutes = async (fastify) => {
   fastify.post("/", createPost);
