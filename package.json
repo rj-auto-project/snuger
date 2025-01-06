@@ -1,21 +1,32 @@
 {
   "name": "snuger",
   "version": "1.0.0",
-  "description": "A simple Node.js API",
+  "description": "sungger backend",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
-  "author": "Your Name",
+  "author": "snugger",
+  "type": "module",
   "license": "ISC",
   "dependencies": {
+    "@fastify/cookie": "^9.3.1",
+    "@fastify/cors": "^10.0.2",
+    "@fastify/rate-limit": "^10.2.1",
+    "@fastify/session": "^10.9.0",
     "@google-cloud/storage": "^7.14.0",
     "apollo-server-express": "^3.13.0",
+    "connect-mongodb-session": "^5.0.0",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2",
+    "fastify": "^5.2.1",
+    "fastify-sensible": "^3.1.2",
+    "fastify-socket.io": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.12.0",
     "mongoose": "^8.9.3",
     "multer": "^1.4.5-lts.1",
-    "nodemon": "^3.1.9"
+    "nodemon": "^3.1.9",
+    "socket.io": "^4.8.1",
+    "tslib": "^2.8.0"
   }
 }
