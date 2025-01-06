@@ -44,7 +44,7 @@ import fastifyCors from "@fastify/cors";
 import { errorHandler } from "./src/utils/error.js";
 import { registerRoutes } from "./src/routes/index.js";
 
-const app = fastify({ logger: true });
+const app = fastify();
 
 // Plugins
 app.register(rateLimitPlugin);
@@ -73,7 +73,6 @@ const start = async () => {
         console.log(`Server is running at http://localhost:${env.PORT}`);
       }
     });
-    console.log(`Server running at http://localhost:${env.PORT}`);
   } catch (error) {
     app.log.error(error);
     process.exit(1);
