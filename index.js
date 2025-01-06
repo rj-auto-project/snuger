@@ -55,8 +55,13 @@ app.register(fastifyCors, {
 //Error handler
 app.setErrorHandler(errorHandler);
 // Routes
-app.register(registerRoutes)
+app.register(registerRoutes);
 // Start Server
+
+app.get("/", async (request, reply) => {
+  return { message: "Hello from Snuger 😎" };
+});
+
 const start = async () => {
   try {
     await connectDB(env.MONGO_URI);
