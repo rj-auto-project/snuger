@@ -3,5 +3,7 @@ dotenv.config();
 
 export default {
   PORT: process.env.PORT || 3000,
-  MONGO_URI: process.env.MONGOURI,
+  MONGOURI: process.env.MONGOURI,
+  GOOGLE_CLOUD_PROJECT_ID: process.env.GOOGLE_CLOUD_PROJECT_ID
+  
 };

@@ -36,43 +36,82 @@
 //   console.log(`Server running on port ${PORT}`);
 // });
 
-import fastify from "fastify";
-import { connectDB } from "./src/config/connect.js";
+// import fastify from "fastify";
+// import { connectDB } from "./src/config/connect.js";
+// import env from "./src/config/env.js";
+// import rateLimitPlugin from "./src/plugin/ratelimiter.js";
+// import fastifyCors from "@fastify/cors";
+// import { errorHandler } from "./src/utils/error.js";
+// import { registerRoutes } from "./src/routes/index.js";
+
+// const app = fastify({ logger: true });
+
+// // Plugins
+// app.register(rateLimitPlugin);
+// app.register(fastifyCors, {
+//   origin: "*",
+//   methods: ["GET", "POST", "PUT", "DELETE"],
+// });
+// //Error handler
+// app.setErrorHandler(errorHandler);
+// // Routes
+// app.register(registerRoutes)
+// // Start Server
+// const start = async () => {
+//   try {
+//     await connectDB(env.MONGO_URI);
+
+//     app.listen({ port: env.PORT, host: "0.0.0.0" }, (err, addr) => {
+//       if (err) {
+//         console.error(err);
+//       } else {
+//         console.log(`Server is running at http://localhost:${env.PORT}`);
+//       }
+//     });
+//     console.log(`Server running at http://localhost:${env.PORT}`);
+//   } catch (error) {
+//     app.log.error(error);
+//     process.exit(1);
+//   }
+// };
+
+// start();
+
+// require("dotenv").config();
 import env from "./src/config/env.js";
 import rateLimitPlugin from "./src/plugin/ratelimiter.js";
 import fastifyCors from "@fastify/cors";
-import { errorHandler } from "./src/utils/error.js";
-import { registerRoutes } from "./src/routes/index.js";
+import fastify from "fastify";
+import { connectDB } from "./src/config/connect.js";
+import { routes } from "./src/routes/index.js";
+import { Storage } from "@google-cloud/storage";
+import {credentials} from "./credentials.js";
 
-const app = fastify();
-
-// Plugins
+const app = fastify({ logger: true });
 app.register(rateLimitPlugin);
 app.register(fastifyCors, {
   origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE"],
 });
-//Error handler
-app.setErrorHandler(errorHandler);
-// Routes
-app.register(registerRoutes);
-// Start Server
 
-app.get("/", async (request, reply) => {
-  return { message: "Hello from Snuger 😎" };
+const storage = new Storage({
+  projectId: env.GOOGLE_CLOUD_PROJECT_ID,
+  credentials: credentials,
 });
+const bucketName = "snuger";
 
+// Connect to MongoDB
+connectDB(env.MONGOURI);
+
+// Register routes
+app.register(routes(storage, bucketName));
+
+// Start the server
+const PORT = env.PORT || 3000;
 const start = async () => {
   try {
-    await connectDB(env.MONGO_URI);
-
-    app.listen({ port: env.PORT, host: "0.0.0.0" }, (err, addr) => {
-      if (err) {
-        console.error(err);
-      } else {
-        console.log(`Server is running at http://localhost:${env.PORT}`);
-      }
-    });
+    await app.listen({ port: PORT });
+    app.log.info(`Server running on port ${PORT}`);
   } catch (error) {
     app.log.error(error);
     process.exit(1);
