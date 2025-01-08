@@ -15,7 +15,6 @@ const postSchema = new mongoose.Schema(
     downvotes: { type: Number, default: 0 },
     totalVotes: { type: Number, default: 0 },
     totalComment: { type: Number, default: 0 },
-    comments: [{ type: mongoose.Schema.Types.ObjectId, ref: "Comment" }],
     reportOptions: [{ type: String }],
     isAnonymous: { type: Boolean, default: false },
     trendingPosition: { type: Number, default: 0 },

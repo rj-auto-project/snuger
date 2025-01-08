@@ -1,14 +1,35 @@
 import fastifyMultipart from "@fastify/multipart";
 import { createPost, getPosts } from "../controllers/post.controller.js";
+import {
+  upvotePost,
+  downvotePost,
+  removeUpvote,
+  removeDownvote,
+} from "../controllers/voting.controller.js";
 
 export const postRoutes = async (fastify) => {
-  // Register the fastify-multipart plugin for handling file uploads
   fastify.register(fastifyMultipart, {
-    addToBody: true, // Adds parsed files to the request body
+    addToBody: true,
     limits: {
-      fileSize: 50 * 1024 * 1024, // Set a file size limit (e.g., 50MB)
+      fileSize: 50 * 1024 * 1024, // size limit 50MB
     },
   });
+
+  // create post
   fastify.post("/upload", createPost);
+
+  // get post
   fastify.get("/", getPosts);
+
+  // upvote post
+  fastify.post("/:postId/upvote", upvotePost);
+
+  // downvote post
+  fastify.post("/:postId/downvote", downvotePost);
+
+  // Remove upvote
+  fastify.delete("/:postId/upvote", removeUpvote);
+
+  // Remove downvote
+  fastify.delete("/:postId/downvote", removeDownvote);
 };
