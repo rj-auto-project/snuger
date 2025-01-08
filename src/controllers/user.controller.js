@@ -9,6 +9,7 @@ const storage = new Storage({
 });
 const bucketName = "snuger";
 
+// create new user
 export const createUser = async (req, reply) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -109,6 +110,7 @@ export const createUser = async (req, reply) => {
   }
 };
 
+// get user details
 export const getUserProfile = async (req, reply) => {
   try {
     const userId = req.params.id;

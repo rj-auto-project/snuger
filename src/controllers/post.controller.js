@@ -3,19 +3,17 @@ import { Post } from "../model/post.model.js";
 import { Storage } from "@google-cloud/storage";
 import { credentials } from "../../credentials.js";
 
-// Initialize Google Cloud Storage
 const storage = new Storage({
   projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
   credentials: credentials,
 });
-const bucketName = "snuger"; // Replace with your actual bucket name
+const bucketName = "snuger";
 
 export const createPost = async (req, reply) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    // Parse data from the request
     const parts = req.parts();
     let userId, content, isAnonymous, locations;
     let imageURLs = [], videoURLs = [], audioURLs = [];
@@ -103,7 +101,6 @@ export const getPosts = async (req, reply) => {
   try {
     const posts = await Post.find()
       .populate("userId", "username profileImage")
-      .populate("comments")
       .lean();
 
     reply.send({ success: true, posts });
