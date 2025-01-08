@@ -1,37 +1,103 @@
 import mongoose from "mongoose";
 import { Post } from "../model/post.model.js";
+import { Storage } from "@google-cloud/storage";
+import { credentials } from "../../credentials.js";
+
+// Initialize Google Cloud Storage
+const storage = new Storage({
+  projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+  credentials: credentials,
+});
+const bucketName = "snuger"; // Replace with your actual bucket name
 
 export const createPost = async (req, reply) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    const { userId, content, images, audio, isAnonymous } = req.body;
+    // Parse data from the request
+    const parts = req.parts();
+    let userId, content, isAnonymous, locations;
+    let imageURLs = [], videoURLs = [], audioURLs = [];
 
+    for await (const part of parts) {
+      if (part.file) {
+        const fileBuffer = await part.toBuffer();
+        const fileName = part.filename;
+        const fileType = part.mimetype.split("/")[0];
+        const options = { destination: fileName, gzip: true };
+
+        try {
+          const bucket = storage.bucket(bucketName);
+          const file = bucket.file(fileName);
+          await file.save(fileBuffer, options);
+        } catch (error) {
+          return reply.status(500).send({
+            error: "Media file upload failed",
+            details: error.message,
+          });
+        }
+
+        const publicUrl = `https://storage.googleapis.com/${bucketName}/${fileName}`;
+        if (fileType === "image") {
+          imageURLs.push(publicUrl);
+        } else if (fileType === "video") {
+          videoURLs.push(publicUrl);
+        } else if (fileType === "audio") {
+          audioURLs.push(publicUrl);
+        }
+      } else {
+        switch (part.fieldname) {
+          case "userId":
+            userId = part.value;
+            break;
+          case "isAnonymous":
+            isAnonymous = part.value;
+            break;
+          case "location":
+            locations = part.value;
+            break;
+          case "content":
+            content = part.value;
+            break;
+        }
+      }
+    }
+    const parsedLocation = locations ? JSON.parse(locations) : undefined;
+    console.log(parsedLocation)
     const post = new Post({
       userId,
       content,
-      images,
-      audio,
       isAnonymous,
+      location:parsedLocation
+      ? { type: "Point", coordinates: parsedLocation }
+      : undefined,
+      images: imageURLs,
+      videos: videoURLs,
+      audios: audioURLs,
     });
 
-    console.log(post);
-
+    console.log(userId,isAnonymous,locations, imageURLs,videoURLs,audioURLs)
     await post.save({ session });
-
     await session.commitTransaction();
     session.endSession();
 
-    reply.send({ success: true, post });
+    reply.status(200).send({
+      message: "Post created successfully",
+      post,
+    });
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-    reply
-      .status(500)
-      .send({ error: "Failed to create post", details: error.message });
+
+    reply.status(500).send({
+      error: "Error creating post",
+      details: error.message,
+    });
   }
 };
+
+
 
 export const getPosts = async (req, reply) => {
   try {
