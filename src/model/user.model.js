@@ -2,12 +2,13 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
-    phoneNumber: { type: Number, unique: true , required: true },
+    phoneNumber: { type: Number, unique: true, required: true },
     username: { type: String, unique: true, required: true },
     name: { type: String },
     profileImage: { type: String, default: "default-profile.jpg" },
     snugScore: { type: Number, default: 0 },
     totalSnugs: { type: Number, default: 0 },
+    snugRank: { type: Number, default: 0 },
     location: {
       type: {
         type: String,
@@ -33,5 +34,5 @@ const userSchema = new mongoose.Schema(
 
 // Create a geospatial index for the location field
 userSchema.index({ location: "2dsphere" });
-  
+
 export const User = mongoose.model("User", userSchema);
