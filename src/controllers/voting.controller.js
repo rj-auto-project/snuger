@@ -16,28 +16,32 @@ export const voteStatus = async (req, reply) => {
       return reply.status(404).send({ message: "Post not found" });
     }
 
-    if (voteStatus === "upvote" && post.voteStatus === "upvote") {
-      return reply.status(400).send({ message: "Post is already upvoted" });
-    }
-
-    if (voteStatus === "downvote" && post.voteStatus === "downvote") {
-      return reply.status(400).send({ message: "Post is already downvoted" });
-    }
-
     const updateFields = { totalVotes: null };
 
     if (voteStatus === "upvote") {
-      updateFields.$inc = { upvotes: 1 };
-      if (post.voteStatus === "downvote") {
-        updateFields.$inc.downvotes = -1; // Remove downvote if switching to upvote
-      }
-      updateFields.$set = { voteStatus: "upvote" };
-    } else if (voteStatus === "downvote") {
-      updateFields.$inc = { downvotes: 1 };
       if (post.voteStatus === "upvote") {
-        updateFields.$inc.upvotes = -1; // Remove upvote if switching to downvote
+        // Remove the upvote if already upvoted
+        updateFields.$inc = { upvotes: -1 };
+        updateFields.$set = { voteStatus: "None" };
+      } else {
+        updateFields.$inc = { upvotes: 1 };
+        if (post.voteStatus === "downvote") {
+          updateFields.$inc.downvotes = -1; // Remove downvote if switching to upvote
+        }
+        updateFields.$set = { voteStatus: "upvote" };
       }
-      updateFields.$set = { voteStatus: "downvote" };
+    } else if (voteStatus === "downvote") {
+      if (post.voteStatus === "downvote") {
+        // Remove the downvote if already downvoted
+        updateFields.$inc = { downvotes: -1 };
+        updateFields.$set = { voteStatus: "None" };
+      } else {
+        updateFields.$inc = { downvotes: 1 };
+        if (post.voteStatus === "upvote") {
+          updateFields.$inc.upvotes = -1; // Remove upvote if switching to downvote
+        }
+        updateFields.$set = { voteStatus: "downvote" };
+      }
     } else if (voteStatus === "None") {
       if (post.voteStatus === "upvote") {
         updateFields.$inc = { upvotes: -1 };
@@ -63,6 +67,7 @@ export const voteStatus = async (req, reply) => {
     reply.status(500).send({ message: "Error updating vote status", error: error.message });
   }
 };
+
 
 
 // // Downvote a post
