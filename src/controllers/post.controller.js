@@ -9,6 +9,7 @@ const storage = new Storage({
 });
 const bucketName = "snuger";
 
+// create post
 export const createPost = async (req, reply) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -96,7 +97,7 @@ export const createPost = async (req, reply) => {
 };
 
 
-
+// get post
 export const getPosts = async (req, reply) => {
   try {
     const posts = await Post.find()
@@ -108,5 +109,40 @@ export const getPosts = async (req, reply) => {
     reply
       .status(500)
       .send({ error: "Failed to fetch posts", details: error.message });
+  }
+};
+
+
+// delete post
+export const deletePost = async (req, reply) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { postId } = req.params;
+
+    if (!postId) {
+      return reply.status(400).send({ error: "postId is required" });
+    }
+
+    const post = await Post.findById(postId).session(session);
+
+    if (!post) {
+      return reply.status(404).send({ error: "Post not found" });
+    }
+
+    await Post.deleteOne({ _id: postId }).session(session);
+
+    await session.commitTransaction();
+    session.endSession();
+
+    reply.send({ success: true, message: "Post deleted successfully" });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    reply.status(500).send({
+      error: "Failed to delete post",
+      details: error.message,
+    });
   }
 };

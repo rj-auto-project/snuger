@@ -1,4 +1,4 @@
-import { createUser, getUserProfile } from "../controllers/user.controller.js";
+import { createUser, getUserProfile, updateUser } from "../controllers/user.controller.js";
 import multipart from "@fastify/multipart";
 
 export const userRoutes = async (fastify, options) => {
@@ -7,5 +7,5 @@ export const userRoutes = async (fastify, options) => {
   });
   fastify.post("/create", createUser);
   fastify.get("/:id", getUserProfile);
-
+  fastify.put("/update", updateUser)
 };

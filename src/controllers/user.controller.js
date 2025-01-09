@@ -127,3 +127,131 @@ export const getUserProfile = async (req, reply) => {
       .send({ error: "Failed to fetch user profile", details: error.message });
   }
 };
+
+
+
+// Update user data individually
+export const updateUser = async (req, reply) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const parts = req.parts();
+    let userId, name, username, phoneNumber, location, fileBuffer, fileName;
+
+    for await (const part of parts) {
+      if (part.file) {
+        fileBuffer = await part.toBuffer();
+        fileName = part.filename;
+      } else {
+        switch (part.fieldname) {
+          case "userId":
+            userId = part.value;
+            break;
+          case "name":
+            name = part.value;
+            break;
+          case "username":
+            username = part.value;
+            break;
+          case "phoneNumber":
+            phoneNumber = part.value;
+            break;
+          case "location":
+            location = part.value;
+            break;
+        }
+      }
+    }
+
+    if (!userId) {
+      return reply.code(400).send({
+        error: "User ID is required",
+      });
+    }
+
+    const user = await User.findById(userId).session(session);
+
+    if (!user) {
+      return reply.code(404).send({
+        error: "User not found",
+      });
+    }
+
+    if (fileBuffer) {
+      const options = { destination: fileName, gzip: true };
+      try {
+        const bucket = storage.bucket(bucketName);
+        const file = bucket.file(fileName);
+        await file.save(fileBuffer, options);
+        user.profileImage = `https://storage.googleapis.com/${bucketName}/${fileName}`;
+      } catch (error) {
+        return reply
+          .status(500)
+          .send({
+            error: "Media file upload failed",
+            details: error.message,
+          });
+      }
+    }
+
+    if (phoneNumber) {
+      const existingUser_ph_num = await User.findOne({
+        phoneNumber,
+        _id: { $ne: userId },
+      }).session(session);
+
+      if (existingUser_ph_num) {
+        return reply.status(409).send({
+          error: "User with this Phone Number already exists",
+        });
+      }
+      user.phoneNumber = phoneNumber;
+    }
+
+    if (username) {
+      const existingUsername = await User.findOne({
+        username,
+        _id: { $ne: userId },
+      }).session(session);
+
+      if (existingUsername) {
+        return reply.status(409).send({
+          error: "This Username already exists",
+        });
+      }
+      user.username = username;
+    }
+
+    if (name) {
+      user.name = name;
+    }
+
+    if (location) {
+      const parsedLocation = JSON.parse(location);
+      if (
+        !Array.isArray(parsedLocation) ||
+        parsedLocation.length !== 2 ||
+        isNaN(parsedLocation[0]) ||
+        isNaN(parsedLocation[1])
+      ) {
+        throw new Error(
+          "Invalid location format. Expected [longitude, latitude]."
+        );
+      }
+      user.location = { type: "Point", coordinates: parsedLocation };
+    }
+
+    await user.save({ session });
+    await session.commitTransaction();
+    session.endSession();
+
+    reply.send({ success: true, user });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    reply.status(500).send({
+      error: "Failed to update user",
+      details: error.message,
+    });
+  }
+};
