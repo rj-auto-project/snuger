@@ -1,11 +1,9 @@
 import fastifyMultipart from "@fastify/multipart";
-import { createPost, deletePost, getPosts } from "../controllers/post.controller.js";
 import {
-  upvotePost,
-  downvotePost,
-  removeUpvote,
-  removeDownvote,
-} from "../controllers/voting.controller.js";
+  createPost,
+  deletePost,
+  getPosts,
+} from "../controllers/post.controller.js";
 
 export const postRoutes = async (fastify) => {
   fastify.register(fastifyMultipart, {
@@ -23,16 +21,4 @@ export const postRoutes = async (fastify) => {
 
   // get post
   fastify.get("/", getPosts);
-
-  // upvote post
-  fastify.post("/:postId/upvote", upvotePost);
-
-  // downvote post
-  fastify.post("/:postId/downvote", downvotePost);
-
-  // Remove upvote
-  fastify.delete("/:postId/upvote", removeUpvote);
-
-  // Remove downvote
-  fastify.delete("/:postId/downvote", removeDownvote);
 };
