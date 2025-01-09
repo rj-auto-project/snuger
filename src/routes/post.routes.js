@@ -1,5 +1,5 @@
 import fastifyMultipart from "@fastify/multipart";
-import { createPost, getPosts } from "../controllers/post.controller.js";
+import { createPost, deletePost, getPosts } from "../controllers/post.controller.js";
 import {
   upvotePost,
   downvotePost,
@@ -17,6 +17,9 @@ export const postRoutes = async (fastify) => {
 
   // create post
   fastify.post("/upload", createPost);
+
+  // delete post
+  fastify.delete("/:postId", deletePost);
 
   // get post
   fastify.get("/", getPosts);
