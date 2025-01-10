@@ -11,11 +11,13 @@ const postSchema = new mongoose.Schema(
     images: [{ type: String }],
     videos: [{ type: String }],
     audios: [{ type: String }],
-    upvotes: { type: Number, default: 0 },
-    downvotes: { type: Number, default: 0 },
+    totalUpvotes: { type: Number, default: 0 }, // Total count of upvotes
+    totalDownvotes: { type: Number, default: 0 }, // Total count of downvotes
+    upvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // Array of user IDs who upvoted
+    downvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // Array of user IDs who downvoted
     totalVotes: { type: Number, default: 0 },
     totalComment: { type: Number, default: 0 },
-    voteStatus: {type: String, default:"None"},
+    voteStatus: { type: String, default: "None" },
     reportOptions: [{ type: String }],
     isAnonymous: { type: Boolean, default: false },
     trendingPosition: { type: Number, default: 0 },
@@ -43,7 +45,7 @@ const postSchema = new mongoose.Schema(
 );
 
 postSchema.pre("save", function (next) {
-  this.totalVotes = this.upvotes - this.downvotes;
+  this.totalVotes = this.totalUpvotes - this.totalDownvotes;
   next();
 });
 
