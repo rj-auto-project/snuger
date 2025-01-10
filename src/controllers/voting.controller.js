@@ -1,9 +1,10 @@
 import { Post } from "../model/post.model.js";
+import { User } from "../model/user.model.js";
 
 // toggle vote
 export const voteStatus = async (req, reply) => {
   try {
-    const { userId,postId,voteStatus } = req.body; // Pass the userId in the request body
+    const { userId, postId, voteStatus } = req.body; // Pass the userId in the request body
 
     const validVoteStatuses = ["upvote", "downvote", "None"];
     if (!validVoteStatuses.includes(voteStatus)) {
@@ -22,6 +23,7 @@ export const voteStatus = async (req, reply) => {
 
     // Initialize changes
     const updateFields = {};
+    let snugScoreChange = 0; // Variable to track the change in snugScore
 
     // Handle upvote
     if (voteStatus === "upvote") {
@@ -30,15 +32,18 @@ export const voteStatus = async (req, reply) => {
         post.upvotes = post.upvotes.filter((id) => id.toString() !== userId);
         post.totalUpvotes--;
         updateFields.voteStatus = "None";
+        snugScoreChange -= 1; // Decrement snugScore since vote is removed
       } else {
         // Add user to upvotes
         post.upvotes.push(userId);
         post.totalUpvotes++;
+        snugScoreChange += 1; // Increment snugScore since user upvoted
 
         // Remove from downvotes if present
         if (post.downvotes.includes(userId)) {
           post.downvotes = post.downvotes.filter((id) => id.toString() !== userId);
           post.totalDownvotes--;
+          snugScoreChange += 1; // Increment snugScore for removing a downvote
         }
 
         updateFields.voteStatus = "upvote";
@@ -52,15 +57,18 @@ export const voteStatus = async (req, reply) => {
         post.downvotes = post.downvotes.filter((id) => id.toString() !== userId);
         post.totalDownvotes--;
         updateFields.voteStatus = "None";
+        snugScoreChange += 1; // Increment snugScore since downvote is removed
       } else {
         // Add user to downvotes
         post.downvotes.push(userId);
         post.totalDownvotes++;
+        snugScoreChange -= 1; // Decrement snugScore since user downvoted
 
         // Remove from upvotes if present
         if (post.upvotes.includes(userId)) {
           post.upvotes = post.upvotes.filter((id) => id.toString() !== userId);
           post.totalUpvotes--;
+          snugScoreChange -= 1; // Decrement snugScore for removing an upvote
         }
 
         updateFields.voteStatus = "downvote";
@@ -72,10 +80,12 @@ export const voteStatus = async (req, reply) => {
       if (post.upvotes.includes(userId)) {
         post.upvotes = post.upvotes.filter((id) => id.toString() !== userId);
         post.totalUpvotes--;
+        snugScoreChange -= 1; // Decrement snugScore since upvote is removed
       }
       if (post.downvotes.includes(userId)) {
         post.downvotes = post.downvotes.filter((id) => id.toString() !== userId);
         post.totalDownvotes--;
+        snugScoreChange += 1; // Increment snugScore since downvote is removed
       }
       updateFields.voteStatus = "None";
     }
@@ -85,6 +95,13 @@ export const voteStatus = async (req, reply) => {
 
     // Save the post
     await post.save();
+
+    // Update snugScore in the user table
+    if (snugScoreChange !== 0) {
+      await User.findByIdAndUpdate(post.userId, {
+        $inc: { snugScore: snugScoreChange },
+      });
+    }
 
     reply.status(200).send({
       message: `Vote status updated to ${voteStatus} successfully`,
