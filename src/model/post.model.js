@@ -1,3 +1,4 @@
+// import { Double } from "mongodb";
 import mongoose from "mongoose";
 
 const postSchema = new mongoose.Schema(
@@ -39,6 +40,16 @@ const postSchema = new mongoose.Schema(
         },
         default: [87.2620756305604, 24.285815044316077],
       },
+    },
+    embedding: {
+      type: [Number], // Array of floating-point numbers
+      validate: {
+        validator: function (v) {
+          return Array.isArray(v) && v.every((num) => typeof num === "number");
+        },
+        message: "Embeddings must be an array of numbers",
+      },
+      default: [], // Default value as an empty array
     },
   },
   { timestamps: true }

@@ -16,6 +16,7 @@
     "@fastify/rate-limit": "^10.2.1",
     "@fastify/session": "^10.9.0",
     "@google-cloud/storage": "^7.14.0",
+    "@xenova/transformers": "^2.17.2",
     "apollo-server-express": "^3.13.0",
     "connect-mongodb-session": "^5.0.0",
     "dotenv": "^16.4.7",
