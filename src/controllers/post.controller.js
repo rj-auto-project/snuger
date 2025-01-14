@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { Post } from "../model/post.model.js";
 import { Storage } from "@google-cloud/storage";
 import { credentials } from "../../credentials.js";
+import { getEmbedding } from "../service/getEmbedding.service.js";
 
 const storage = new Storage({
   projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
@@ -63,7 +64,8 @@ export const createPost = async (req, reply) => {
       }
     }
     const parsedLocation = locations ? JSON.parse(locations) : undefined;
-    console.log(parsedLocation)
+    const embedding = await getEmbedding(content)
+    // console.log()
     const post = new Post({
       userId,
       content,
@@ -74,9 +76,9 @@ export const createPost = async (req, reply) => {
       images: imageURLs,
       videos: videoURLs,
       audios: audioURLs,
+      embedding:embedding
     });
 
-    console.log(userId,isAnonymous,locations, imageURLs,videoURLs,audioURLs)
     await post.save({ session });
     await session.commitTransaction();
     session.endSession();
