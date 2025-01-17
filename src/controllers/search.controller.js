@@ -18,7 +18,6 @@ export const searchResult = async (req, reply) => {
     const postsCollection = database.collection("posts");
 
     const { searchQuery, userCoords, maxDistance = 10000 } = req.body;
-    console.log(userCoords);
     const results = {
       user_search: [],
       snugs_text_result: [],
