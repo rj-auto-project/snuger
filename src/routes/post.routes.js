@@ -2,7 +2,8 @@ import fastifyMultipart from "@fastify/multipart";
 import {
   createPost,
   deletePost,
-  getPosts,
+  getPostsByLocation,
+  getGroupPosts
 } from "../controllers/post.controller.js";
 
 export const postRoutes = async (fastify) => {
@@ -20,5 +21,6 @@ export const postRoutes = async (fastify) => {
   fastify.delete("/:postId", deletePost);
 
   // get post
-  fastify.get("/", getPosts);
+  fastify.get("/location", getPostsByLocation);
+  fastify.get("/group", getGroupPosts);
 };
