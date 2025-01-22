@@ -22,7 +22,7 @@ const postSchema = new mongoose.Schema(
     reportOptions: [{ type: String }],
     isAnonymous: { type: Boolean, default: false },
     trendingPosition: { type: Number, default: 0 },
-    groupIDs: {type: String},
+    groupID: {type: String},
     location: {
       type: {
         type: String,
