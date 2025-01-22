@@ -63,6 +63,7 @@ export const createPost = async (req, reply) => {
             break;
           case "groupID":
             groupID = part.value;
+            break;
         }
       }
     }
