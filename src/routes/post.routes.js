@@ -3,7 +3,8 @@ import {
   createPost,
   deletePost,
   getPostsByLocation,
-  getGroupPosts
+  getGroupPosts,
+  getTopPosts
 } from "../controllers/post.controller.js";
 
 export const postRoutes = async (fastify) => {
@@ -23,4 +24,5 @@ export const postRoutes = async (fastify) => {
   // get post
   fastify.get("/location", getPostsByLocation);
   fastify.get("/group", getGroupPosts);
+  fastify.get("/hots",getTopPosts)
 };

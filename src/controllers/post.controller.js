@@ -3,6 +3,7 @@ import { Post } from "../model/post.model.js";
 import { Storage } from "@google-cloud/storage";
 import { credentials } from "../../credentials.js";
 import { getEmbedding } from "../service/getEmbedding.service.js";
+import { User } from "../model/user.model.js";
 
 const storage = new Storage({
   projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
@@ -17,7 +18,7 @@ export const createPost = async (req, reply) => {
 
   try {
     const parts = req.parts();
-    let userId, content, isAnonymous, locations;
+    let userId, content, isAnonymous, locations, groupID;
     let imageURLs = [], videoURLs = [], audioURLs = [];
 
     for await (const part of parts) {
@@ -60,6 +61,8 @@ export const createPost = async (req, reply) => {
           case "content":
             content = part.value;
             break;
+          case "groupID":
+            groupID = part.value;
         }
       }
     }
@@ -76,9 +79,9 @@ export const createPost = async (req, reply) => {
       images: imageURLs,
       videos: videoURLs,
       audios: audioURLs,
-      embedding:embedding
+      embedding:embedding,
+      groupID:groupID
     });
-
     await post.save({ session });
     await session.commitTransaction();
     session.endSession();

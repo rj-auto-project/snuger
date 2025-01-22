@@ -128,8 +128,6 @@ export const getUserProfile = async (req, reply) => {
   }
 };
 
-
-
 // Update user data individually
 export const updateUser = async (req, reply) => {
   const session = await mongoose.startSession();
