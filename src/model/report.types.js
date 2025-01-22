@@ -1,0 +1,1 @@
+export const Report_types = ['Spam', 'Nudity', 'Harassment', 'Hate Speech', 'Other'];
