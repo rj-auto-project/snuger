@@ -1,44 +1,42 @@
-// index.js
-import fastify from "fastify";
-import { connectDB } from "./src/config/connect.js";
-import env from "./src/config/env.js";
-import rateLimitPlugin from "./src/plugin/ratelimiter.js";
-import fastifyCors from "@fastify/cors";
-import { errorHandler } from "./src/utils/error.js";
-import { registerRoutes } from "./src/routes/index.js"; // Ensure this file exports all routes
+import fastify from 'fastify';
+import { connectDB } from './src/config/connect.js';
+import env from './src/config/env.js';
+import rateLimitPlugin from './src/plugin/ratelimiter.js';
+import fastifyCors from '@fastify/cors';
+import { errorHandler } from './src/utils/error.js';
+import { reportRoutes } from './src/routes/report.routes.js';
 
 const app = fastify();
 
 // Register plugins
 app.register(rateLimitPlugin);
 app.register(fastifyCors, {
-  origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
 });
 
 // Set error handler
 app.setErrorHandler(errorHandler);
 
 // Register routes
-app.register(registerRoutes);
+app.register(reportRoutes, { prefix: '/api' }); // Add prefix for API routes
 
 // Root route
-app.get("/", async (request, reply) => {
-  return { message: "Hello from Snuger 😎" };
+app.get('/', async (request, reply) => {
+  return { message: 'Hello from Snuger 😎' };
 });
 
 // Start server
 const start = async () => {
   try {
-    await connectDB(env.MONGO_URI); // Ensure this correctly connects to MongoDB
+    await connectDB(env.MONGO_URI);
 
-    app.listen({ port: env.PORT, host: "0.0.0.0" }, (err, addr) => {
+    app.listen({ port: env.PORT, host: '0.0.0.0' }, (err, addr) => {
       if (err) {
         console.error(err);
         process.exit(1);
-      } else {
-        console.log(`Server is running at ${addr}`);
       }
+      console.log(`Server is running at ${addr}`);
     });
   } catch (error) {
     app.log.error(error);
