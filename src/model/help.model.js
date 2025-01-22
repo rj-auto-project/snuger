@@ -35,6 +35,6 @@ const helpSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-postSchema.index({ location: "2dsphere" });
+helpSchema.index({ location: "2dsphere" });
 
-export const Help = mongoose.model("Post", helpSchema);
+export const Help = mongoose.model("Help", helpSchema);

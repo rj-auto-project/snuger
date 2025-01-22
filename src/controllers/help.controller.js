@@ -72,7 +72,7 @@ export const submitHelp = async (req, reply) => {
     session.endSession();
 
     reply.status(200).send({
-      message: "Post created successfully",
+      message: "Help created successfully",
       post,
     });
   } catch (error) {
