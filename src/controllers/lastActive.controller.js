@@ -1,4 +1,4 @@
-import { User } from "../model/user.model"; // Import your User model
+import { User } from "../model/user.model.js"; // Import your User model
 
 // change user's online status
 export const lastActiveUpdate = async (request, reply) => {
