@@ -15,7 +15,7 @@ export const submitHelp = async (req, reply) => {
 
   try {
     const parts = req.parts();
-    let userId, content, locations;
+    let userId, content, locations, helpType;
     let imageURLs = [],
       videoURLs = [];
 
@@ -54,6 +54,9 @@ export const submitHelp = async (req, reply) => {
           case "content":
             content = part.value;
             break;
+          case "helpType":
+            helpType = part.value;
+            break;
         }
       }
     }
@@ -66,6 +69,7 @@ export const submitHelp = async (req, reply) => {
         : undefined,
       images: imageURLs,
       videos: videoURLs,
+      helpType: helpType
     });
     await post.save({ session });
     await session.commitTransaction();
