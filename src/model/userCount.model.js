@@ -15,4 +15,4 @@ const userCountSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export const appSettings = mongoose.model("appSettings", userCountSchema);
+export const appSettings = mongoose.model("launchTimeUsers", userCountSchema);
