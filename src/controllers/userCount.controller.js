@@ -1,23 +1,27 @@
-import { appSettings } from "../model/userCounter.model.js"; // Adjust the import path based on your file structure
+import { appSettings } from "../model/userCount.model.js"; // Adjust the import path based on your file structure
 
 export const updateUserCount = async (req, res) => {
   try {
-    const settings = await appSettings.findOne();
+    const { email } = req.body;
 
-    if (!settings) {
-      const newSettings = new appSettings();
-      newSettings.webUserCount = "1";
-      await newSettings.save();
-      return res.status(201).send({ message: "User count incremented", data: newSettings });
+    // Check if email is provided
+    if (!email) {
+      return res.status(400).send({ message: "Email is required" });
     }
 
-    // Increment the webUserCount (convert to number, increment, and save)
-    settings.webUserCount = (parseInt(settings.webUserCount) + 1).toString();
-    await settings.save();
+    // Check if the email already exists in the database
+    let user = await appSettings.findOne({ email });
 
-    res.status(200).send({ message: "User count incremented", data: settings });
+    if (!user) {
+      // If user doesn't exist, create a new entry
+      user = new appSettings({ email, webUserCount: "1" });
+      await user.save();
+      return res.status(201).send({ message: "New user added", data: user });
+    }
+
+    res.status(200).send({ message: "User count incremented", data: user });
   } catch (error) {
-    console.error("Error incrementing user count:", error);
+    console.error("Error updating user count:", error);
     res.status(500).send({ message: "Internal server error" });
   }
 };
