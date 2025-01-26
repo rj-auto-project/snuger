@@ -2,11 +2,13 @@ import fastifyMultipart from "@fastify/multipart";
 import {
   createPost,
   deletePost,
-  getPostsByLocation,
-  getGroupPosts,
-  getTopPosts
+
 } from "../controllers/post.controller.js";
 
+import {  getPostsByLocation,
+  getGroupPosts,
+  getTopPosts } from "../controllers/getAllPost.controller.js"
+  
 export const postRoutes = async (fastify) => {
   fastify.register(fastifyMultipart, {
     addToBody: true,
