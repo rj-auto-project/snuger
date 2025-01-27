@@ -1,4 +1,3 @@
-// import { Double } from "mongodb";
 import mongoose from "mongoose";
 
 const helpSchema = new mongoose.Schema(
@@ -11,7 +10,7 @@ const helpSchema = new mongoose.Schema(
     content: { type: String },
     images: [{ type: String }],
     videos: [{ type: String }],
-    reportOptions: [{ type: String }],
+    helpType: [{ type: String }],
     location: {
       type: {
         type: String,

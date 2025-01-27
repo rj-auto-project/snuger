@@ -207,10 +207,3 @@ export const searchResult = async (req, reply) => {
     await client.close();
   }
 }
-
-// const searchQuery = "@muskanriya";
-// const userLocation = {
-//   latitude: 24.269154189825926,
-//   longitude: 87.25044466349696,
-// };
-// const results = await run(searchQuery, userLocation, 5000); // 5km radius
