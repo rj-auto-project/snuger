@@ -9,8 +9,8 @@ const userSchema = new mongoose.Schema(
     snugScore: { type: Number, default: 0 },
     totalSnugs: { type: Number, default: 0 },
     snugRank: { type: Number, default: 0 },
-    groupIDs: [{type: String}],
-    lastActive: {type: String},
+    groupIDs: [{ type: String }],
+    lastActive: { type: String },
     location: {
       type: {
         type: String,
@@ -30,6 +30,7 @@ const userSchema = new mongoose.Schema(
         default: [87.2620756305604, 24.285815044316077],
       },
     },
+    chats: [{ type: mongoose.Schema.Types.ObjectId, ref: "Chat" }],
   },
   { timestamps: true }
 );
