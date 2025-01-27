@@ -1,11 +1,10 @@
-// const mongoose = require('mongoose');
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const ChatSchema = new mongoose.Schema({
   participants: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // Reference to User model
+      ref: 'User',
       required: true,
     },
   ],
@@ -13,7 +12,7 @@ const ChatSchema = new mongoose.Schema({
     {
       sender: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User", // Reference to User model
+        ref: 'User',
         required: true,
       },
       content: {
@@ -22,8 +21,8 @@ const ChatSchema = new mongoose.Schema({
       },
       type: {
         type: String,
-        enum: ["text", "image", "video", "file"], // Message types
-        default: "text",
+        enum: ['text', 'image', 'video', 'file'],
+        default: 'text',
       },
       timestamp: {
         type: Date,
@@ -32,7 +31,7 @@ const ChatSchema = new mongoose.Schema({
       readBy: [
         {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "User", // Users who have read this message
+          ref: 'User',
         },
       ],
     },
@@ -48,7 +47,7 @@ const ChatSchema = new mongoose.Schema({
     },
   },
   groupAvatar: {
-    type: String, // URL of the group avatar (optional)
+    type: String,
   },
   lastUpdated: {
     type: Date,
@@ -56,11 +55,9 @@ const ChatSchema = new mongoose.Schema({
   },
 });
 
-ChatSchema.pre("save", function (next) {
-  this.lastUpdated = new Date(); // Update lastUpdated whenever the chat is saved
+ChatSchema.pre('save', function (next) {
+  this.lastUpdated = new Date();
   next();
 });
 
-const Chat = mongoose.model("Chat", ChatSchema);
-
-module.exports = Chat;
+export const Chat = mongoose.model('Chat', ChatSchema);

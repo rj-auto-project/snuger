@@ -7,6 +7,8 @@ import { groupRoutes } from "./group.route.js";
 import { reportRoutes } from "./report.routes.js";
 import { helpRoutes } from "./help.route.js";
 import { activeStatusRoutes } from "./lastActive.route.js";
+import { chatRoutes } from "./chat.route.js";
+import { chatWebSocket } from "../websocket/chat.websocket.js";
 
 export const registerRoutes = async (fastify) => {
   fastify.register(userRoutes, { prefix: "/api/users" });
@@ -18,4 +20,14 @@ export const registerRoutes = async (fastify) => {
   fastify.register(reportRoutes, { prefix: "/api/report" });
   fastify.register(helpRoutes, { prefix: "/api/help" });
   fastify.register(activeStatusRoutes, { prefix: "/api/activeStatus" });
+  fastify.register(chatRoutes, { prefix: "/api/chat" });
+  
+  fastify.route({
+    method: "GET",
+    url: "/ws",
+    handler: (request, reply) => {
+      reply.send({ message: "WebSocket endpoint" });
+    },
+    wsHandler: chatWebSocket,
+  });
 };

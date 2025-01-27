@@ -1,11 +1,11 @@
-// index.js
 import fastify from "fastify";
 import { connectDB } from "./src/config/connect.js";
 import env from "./src/config/env.js";
 import rateLimitPlugin from "./src/plugin/ratelimiter.js";
 import fastifyCors from "@fastify/cors";
+import websocketPlugin from "@fastify/websocket"; // WebSocket plugin
 import { errorHandler } from "./src/utils/error.js";
-import { registerRoutes } from "./src/routes/index.js"; // Ensure this file exports all routes
+import { registerRoutes } from "./src/routes/index.js";
 
 const app = fastify();
 
@@ -15,11 +15,12 @@ app.register(fastifyCors, {
   origin: "*",
   methods: ["GET", "POST", "PUT", "DELETE"],
 });
+app.register(websocketPlugin); // Register WebSocket plugin
 
 // Set error handler
 app.setErrorHandler(errorHandler);
 
-// Register routes
+// Register HTTP routes
 app.register(registerRoutes);
 
 // Root route
@@ -30,7 +31,7 @@ app.get("/", async (request, reply) => {
 // Start server
 const start = async () => {
   try {
-    await connectDB(env.MONGO_URI); // Ensure this correctly connects to MongoDB
+    await connectDB(env.MONGO_URI); // Connect to MongoDB
 
     app.listen({ port: env.PORT, host: "0.0.0.0" }, (err, addr) => {
       if (err) {
