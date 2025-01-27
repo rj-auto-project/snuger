@@ -1,4 +1,4 @@
-import { chatService } from "../service/chatService.js";
+import { chatService } from "../service/chat.service.js";
 
 
 

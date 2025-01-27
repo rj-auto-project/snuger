@@ -1,4 +1,4 @@
-import { messageService } from "../service/messageService.js";
+import { messageService } from "../service/message.service.js";
 
 export const getMessages = async (request, reply) => {
   const { chatId } = request.params;
