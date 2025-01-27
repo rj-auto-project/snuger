@@ -9,8 +9,10 @@ import { helpRoutes } from "./help.routes.js";
 import { activeStatusRoutes } from "./lastActive.routes.js";
 import { userCountRoutes } from "./userCount.routes.js";
 import { chatRoutes } from "./chat.routes.js";
+import { authRoutes } from "./auth.routes.js";
 
 export const registerRoutes = async (fastify) => {
+  fastify.register(authRoutes, { prefix: "/api/auth" });
   fastify.register(userRoutes, { prefix: "/api/users" });
   fastify.register(postRoutes, { prefix: "/api/posts" });
   fastify.register(commentRoutes, { prefix: "/api/comments" });
