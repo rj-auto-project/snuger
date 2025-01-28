@@ -5,7 +5,8 @@ import env from "./src/config/env.js";
 import rateLimitPlugin from "./src/plugin/ratelimiter.js";
 import fastifyCors from "@fastify/cors";
 import { errorHandler } from "./src/utils/error.js";
-import { registerRoutes } from "./src/routes/index.js"; // Ensure this file exports all routes
+import { registerRoutes } from "./src/routes/index.js";
+import fastifySocketIO from "fastify-socket.io";
 
 const app = fastify();
 
@@ -27,10 +28,20 @@ app.get("/", async (request, reply) => {
   return { message: "Hello from Snuger 😎" };
 });
 
+//register websockets
+app.register(fastifySocketIO, {
+  cors: {
+    origin: "*",
+  },
+  transports: ["websocket"],
+  pingInterval: 10000,
+  pingTimeout: 5000,
+});
+
 // Start server
 const start = async () => {
   try {
-    await connectDB(env.MONGO_URI); // Ensure this correctly connects to MongoDB
+    await connectDB(env.MONGO_URI);
 
     app.listen({ port: env.PORT, host: "0.0.0.0" }, (err, addr) => {
       if (err) {
@@ -45,5 +56,26 @@ const start = async () => {
     process.exit(1);
   }
 };
+
+app.ready().then(() => {
+  app.io.on("connection", (socket) => {
+    socket.on("joinChat", (chatId) => {
+      socket.join(chatId);
+      console.log("connected to chat", chatId);
+    });
+
+    socket.on("sendMessage", async ({ chatId, message }) => {
+      try {
+        const newMessage = await messageService.createMessage({
+          ...message,
+          chat: chatId,
+        });
+        app.io.to(chatId).emit("newMessage", newMessage);
+      } catch (error) {
+        socket.emit("error", error.message);
+      }
+    });
+  });
+});
 
 start();

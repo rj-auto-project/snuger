@@ -1,16 +1,20 @@
 import { commentRoutes } from "./comment.routes.js";
 import { postRoutes } from "./post.routes.js";
-import { searchRoutes } from "./search.route.js";
+import { searchRoutes } from "./search.routes.js";
 import { userRoutes } from "./user.routes.js";
 import { voteToggle } from "./vote.routes.js";
-import { groupRoutes } from "./group.route.js";
+import { groupRoutes } from "./group.routes.js";
 import { reportRoutes } from "./report.routes.js";
-import { helpRoutes } from "./help.route.js";
-import { activeStatusRoutes } from "./lastActive.route.js";
-import { userCountRoutes } from "./userCount.route.js";
+import { helpRoutes } from "./help.routes.js";
+import { activeStatusRoutes } from "./lastActive.routes.js";
+import { userCountRoutes } from "./userCount.routes.js";
+import { chatRoutes } from "./chat.routes.js";
+import { authRoutes } from "./auth.routes.js";
 import { getTopSnugerRoutes } from "./topSuger.route.js";
 
+
 export const registerRoutes = async (fastify) => {
+  fastify.register(authRoutes, { prefix: "/api/auth" });
   fastify.register(userRoutes, { prefix: "/api/users" });
   fastify.register(postRoutes, { prefix: "/api/posts" });
   fastify.register(commentRoutes, { prefix: "/api/comments" });
@@ -22,4 +26,5 @@ export const registerRoutes = async (fastify) => {
   fastify.register(activeStatusRoutes, { prefix: "/api/activeStatus" });
   fastify.register(userCountRoutes, {prefix: "/api/userCount"});
   fastify.register(getTopSnugerRoutes, {prefix: "/api/topSnuger"})
+  fastify.register(chatRoutes, { prefix: "/api/chats" });
 };
