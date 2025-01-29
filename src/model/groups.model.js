@@ -3,7 +3,6 @@ import mongoose from "mongoose";
 const groupSchema = new mongoose.Schema(
   {
     name: { type: String },
-    groupID: { type: String },
     members: [{ type: String }],
     location: {
       type: {
