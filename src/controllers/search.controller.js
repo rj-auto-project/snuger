@@ -1,4 +1,4 @@
-import { MongoClient } from "mongodb";
+import mongoose from "mongoose";
 import { getEmbedding } from "../service/getEmbedding.service.js";
 
 /**
@@ -11,21 +11,29 @@ import { getEmbedding } from "../service/getEmbedding.service.js";
 
 export const searchResult = async (req, reply) => {
   try {
-    const client = new MongoClient(process.env.MONGOURI);
-    await client.connect();
-    const database = client.db("snuger");
-    const usersCollection = database.collection("users");
-    const postsCollection = database.collection("posts");
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    const usersCollection = mongoose.connection.db.collection("users");
+    const postsCollection = mongoose.connection.db.collection("posts");
 
-    const { searchQuery, userCoords, maxDistance = 10000 } = req.body;
+    const {
+      currentUserId,
+      searchQuery,
+      userCoords,
+      maxDistance = 10000,
+    } = req.body;
     const results = {
       user_search: [],
       snugs_text_result: [],
       snugs_vector_result: [],
-      nearby_posts: [],
+      // nearby_posts: [],
     };
-
-    // User Full-Text Search Pipeline with Location
+    const currentUser = await usersCollection.findOne(
+      { _id: new mongoose.Types.ObjectId(currentUserId) },
+      { projection: { groupIDs: 1 } }
+    );
+    console.log("test");
+    // User Full-Text Search Pipeline with Location and Common Groups
     const userSearchPipeline = [
       {
         $search: {
@@ -57,7 +65,7 @@ export const searchResult = async (req, reply) => {
             $geoWithin: {
               $centerSphere: [
                 [userCoords.longitude, userCoords.latitude],
-                maxDistance / 6378100, // Convert meters to radians (radius of Earth is 6378100 meters)
+                maxDistance / 6378100, // Convert meters to radians
               ],
             },
           },
@@ -71,10 +79,52 @@ export const searchResult = async (req, reply) => {
           profileImage: 1,
           snugScore: 1,
           location: 1,
+          groupIDs: 1,
           score: { $meta: "searchScore" },
+          commonGroupIds: {
+            $setIntersection: ["$groupIDs", currentUser.groupIDs || []],
+          },
+          commonGroupsCount: {
+            $size: {
+              $setIntersection: ["$groupIDs", currentUser.groupIDs || []],
+            },
+          },
         },
       },
-      { $sort: { score: -1 } },
+      {
+        $lookup: {
+          from: "groups",
+          let: { commonIds: "$commonGroupIds" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $in: [{ $toString: "$_id" }, "$$commonIds"],
+                },
+              },
+            },
+            {
+              $project: {
+                _id: 1,
+                name: 1,
+              },
+            },
+          ],
+          as: "commonGroups",
+        },
+      },
+      {
+        $addFields: {
+          // Optionally boost score based on number of common groups
+          adjustedScore: {
+            $add: [
+              { $meta: "searchScore" },
+              { $multiply: ["$commonGroupsCount", 0.1] }, // Adjust multiplier as needed
+            ],
+          },
+        },
+      },
+      { $sort: { adjustedScore: -1 } },
       { $limit: 5 },
     ];
 
@@ -108,15 +158,92 @@ export const searchResult = async (req, reply) => {
         },
       },
       {
+        $lookup: {
+          from: "groups",
+          localField: "groupID",
+          foreignField: "_id",
+          as: "group",
+        },
+      },
+      {
+        $addFields: {
+          group: { $arrayElemAt: ["$group", 0] },
+          isInCommonGroup: {
+            $cond: {
+              if: {
+                $in: [
+                  "$groupID",
+                  currentUser.groupIDs.map(
+                    (id) => new mongoose.Types.ObjectId(id)
+                  ),
+                ],
+              },
+              then: true,
+              else: false,
+            },
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "author",
+        },
+      },
+      {
+        $addFields: {
+          author: { $arrayElemAt: ["$author", 0] },
+        },
+      },
+      {
         $project: {
           _id: 1,
           title: 1,
           content: 1,
           location: 1,
+          totalVotes: 1,
+          totalComment: 1,
+          createdAt: 1,
+          isAnonymous: 1,
           score: { $meta: "searchScore" },
+          group: {
+            $cond: {
+              if: "$isInCommonGroup",
+              then: {
+                _id: "$group._id",
+                name: "$group.name",
+              },
+              else: null,
+            },
+          },
+          author: {
+            $cond: {
+              if: "$isAnonymous",
+              then: null,
+              else: {
+                _id: "$author._id",
+                username: "$author.username",
+                name: "$author.name",
+                profileImage: "$author.profileImage",
+              },
+            },
+          },
+          isInCommonGroup: 1,
         },
       },
-      { $sort: { score: -1 } },
+      {
+        $addFields: {
+          adjustedScore: {
+            $add: [
+              { $meta: "searchScore" },
+              { $cond: { if: "$isInCommonGroup", then: 0.2, else: 0 } },
+            ],
+          },
+        },
+      },
+      { $sort: { adjustedScore: -1 } },
       { $limit: 10 },
     ];
 
@@ -152,15 +279,92 @@ export const searchResult = async (req, reply) => {
         },
       },
       {
+        $lookup: {
+          from: "groups",
+          localField: "groupID",
+          foreignField: "_id",
+          as: "group",
+        },
+      },
+      {
+        $addFields: {
+          group: { $arrayElemAt: ["$group", 0] },
+          isInCommonGroup: {
+            $cond: {
+              if: {
+                $in: [
+                  "$groupID",
+                  currentUser.groupIDs.map(
+                    (id) => new mongoose.Types.ObjectId(id)
+                  ),
+                ],
+              },
+              then: true,
+              else: false,
+            },
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "author",
+        },
+      },
+      {
+        $addFields: {
+          author: { $arrayElemAt: ["$author", 0] },
+        },
+      },
+      {
         $project: {
           _id: 1,
           title: 1,
           content: 1,
-          snugScore: 1,
           location: 1,
+          totalVotes: 1,
+          totalComment: 1,
+          createdAt: 1,
+          isAnonymous: 1,
           score: { $meta: "vectorSearchScore" },
+          group: {
+            $cond: {
+              if: "$isInCommonGroup",
+              then: {
+                _id: "$group._id",
+                name: "$group.name",
+              },
+              else: null,
+            },
+          },
+          author: {
+            $cond: {
+              if: "$isAnonymous",
+              then: null,
+              else: {
+                _id: "$author._id",
+                username: "$author.username",
+                name: "$author.name",
+                profileImage: "$author.profileImage",
+              },
+            },
+          },
+          isInCommonGroup: 1,
         },
       },
+      {
+        $addFields: {
+          adjustedScore: {
+            $add: [
+              { $meta: "vectorSearchScore" },
+              { $cond: { if: "$isInCommonGroup", then: 0.2, else: 0 } },
+            ],
+          },
+        },
+      },
+      { $sort: { adjustedScore: -1 } },
       { $limit: 10 },
     ];
 
@@ -169,36 +373,6 @@ export const searchResult = async (req, reply) => {
       results["snugs_vector_result"].push(doc);
     }
 
-    // Nearby posts without text search
-    const nearbyPostsPipeline = [
-      {
-        $match: {
-          location: {
-            $geoWithin: {
-              $centerSphere: [
-                [userCoords.longitude, userCoords.latitude],
-                maxDistance / 6378100,
-              ],
-            },
-          },
-        },
-      },
-      {
-        $project: {
-          _id: 1,
-          title: 1,
-          content: 1,
-          location: 1,
-        },
-      },
-      { $limit: 10 },
-    ];
-
-    const nearbyPosts = await postsCollection
-      .aggregate(nearbyPostsPipeline)
-      .toArray();
-    results["nearby_posts"] = nearbyPosts;
-
     return reply.status(200).send(results);
   } catch (error) {
     request.log.error(error);
@@ -206,4 +380,4 @@ export const searchResult = async (req, reply) => {
   } finally {
     await client.close();
   }
-}
+};
