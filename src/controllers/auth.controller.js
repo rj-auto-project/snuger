@@ -1,5 +1,5 @@
-import { auth } from "../config/firebase.js";
 import { User } from "../model/user.model.js";
+import { uploadFileToGCS } from "../service/upload.service.js";
 import {
   generateSignUpTokens,
   generateTokens,
@@ -43,29 +43,50 @@ export async function createUser(request, reply) {
     }
 
     const { phoneNumber } = verifySignUpToken(signUpToken);
-
     const existingUser = await User.findOne({ phoneNumber });
     if (existingUser) {
       return reply.code(409).send({ error: "User already exists" });
     }
-    const { name, username, profileImage } = request.body;
 
-    if (!name || !username || !profileImage) {
-      return reply
-        .code(400)
-        .send({ error: "Name, username and profile image are required" });
+    const parts = request.parts();
+    let name, username, profileImage, fileBuffer, fileName;
+
+    for await (const part of parts) {
+      if (part.file) {
+        fileBuffer = await part.toBuffer();
+        fileName = part.filename;
+      } else {
+        switch (part.fieldname) {
+          case "name":
+            name = part.value;
+            break;
+          case "username":
+            username = part.value;
+            break;
+        }
+      }
+    }
+
+    if (!name || !username) {
+      return reply.code(400).send({ error: "Name and username are required" });
     }
 
     const existingUsername = await User.findOne({ username });
     if (existingUsername) {
       return reply.code(409).send({ error: "Username already exists" });
     }
+
+    if (fileBuffer) {
+      profileImage = await uploadFileToGCS(fileBuffer, fileName, "snuger");
+    }
+
     const newUser = await User.create({
       phoneNumber,
       name,
       username,
       profileImage,
     });
+
     const { accessToken, refreshToken } = generateTokens(newUser._id);
     return reply.send({
       accessToken,
@@ -74,10 +95,9 @@ export async function createUser(request, reply) {
     });
   } catch (error) {
     console.error("User creation error:", error);
-    if (error.message === "Invalid token") {
-      return reply.code(401).send({ error: "Invalid signup token", error });
-    }
-    reply.code(500).send({ error: "Error creating user", error });
+    reply
+      .code(500)
+      .send({ error: "Error creating user", details: error.message });
   }
 }
 

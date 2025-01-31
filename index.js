@@ -8,6 +8,7 @@ import { errorHandler } from "./src/utils/error.js";
 import { registerRoutes } from "./src/routes/index.js";
 import fastifySocketIO from "fastify-socket.io";
 
+
 const app = fastify();
 
 // Register plugins
