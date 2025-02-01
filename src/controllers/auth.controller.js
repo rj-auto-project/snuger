@@ -21,8 +21,9 @@ export async function verifyFirebaseToken(request, reply) {
       const { accessToken, refreshToken } = generateTokens(existingUser._id);
       return reply.send({ user: existingUser, accessToken, refreshToken });
     } else {
-      const signUpToken = generateSignUpTokens(firebaseToken);
+      const signUpToken = generateSignUpTokens(phone_number);
       return reply.send({
+        signUpToken,
         isNewUser: true,
         message: "Please complete registration using the signup token",
       });
