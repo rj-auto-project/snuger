@@ -14,5 +14,5 @@ export const authRoutes = async (fastify) => {
   });
   fastify.post("/verify-firebse-token", verifyFirebaseToken);
   fastify.post("/signup", createUser);
-  fastify.post("/refreshToken", refreshToken);
+  fastify.post("/refresh-token", refreshToken);
 };
