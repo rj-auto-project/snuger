@@ -12,7 +12,7 @@ export const authRoutes = async (fastify) => {
       fileSize: 50 * 1024 * 1024, // size limit 50MB
     },
   });
-  fastify.post("/verify-firebse-token", verifyFirebaseToken);
+  fastify.post("/verify-firebase-token", verifyFirebaseToken);
   fastify.post("/signup", createUser);
   fastify.post("/refresh-token", refreshToken);
 };
