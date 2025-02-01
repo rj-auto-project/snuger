@@ -14,14 +14,14 @@ export async function verifyFirebaseToken(request, reply) {
     if (!firebaseToken)
       return reply.status(400).send({ error: "firebase Token is required" });
 
-    // const { phone_number } = await auth.verifyIdToken(firebaseToken);
-    const existingUser = await User.findOne({ phoneNumber: firebaseToken });
+    const { phone_number } = await auth.verifyIdToken(firebaseToken);
+    const existingUser = await User.findOne({ phoneNumber: phone_number });
 
     if (existingUser) {
       const { accessToken, refreshToken } = generateTokens(existingUser._id);
       return reply.send({ user: existingUser, accessToken, refreshToken });
     } else {
-      const signUpToken = generateSignUpTokens(firebaseToken);
+      const signUpToken = generateSignUpTokens(phone_number);
       return reply.send({
         signUpToken,
         isNewUser: true,
