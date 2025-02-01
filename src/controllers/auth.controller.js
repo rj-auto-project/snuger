@@ -23,14 +23,13 @@ export async function verifyFirebaseToken(request, reply) {
     } else {
       const signUpToken = generateSignUpTokens(firebaseToken);
       return reply.send({
-        signUpToken,
         isNewUser: true,
         message: "Please complete registration using the signup token",
       });
     }
   } catch (error) {
     console.error("Firebase verification error:", error);
-    reply.code(401).send({ error: "Invalid Firebase token" });
+    return reply.code(401).send({ error: "Invalid Firebase token" });
   }
 }
 
@@ -95,7 +94,7 @@ export async function createUser(request, reply) {
     });
   } catch (error) {
     console.error("User creation error:", error);
-    reply
+    return reply
       .code(500)
       .send({ error: "Error creating user", details: error.message });
   }
@@ -108,6 +107,6 @@ export async function refreshToken(request, reply) {
     const tokens = generateTokens(decoded.userId);
     return reply.send(tokens);
   } catch (error) {
-    reply.code(401).send({ error: "Invalid refresh token", error });
+    return reply.code(401).send({ error: "Invalid refresh token", error });
   }
 }
