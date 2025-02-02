@@ -12,17 +12,17 @@ export const lastActiveUpdate = async (request, reply) => {
   }
 
   try {
-    let lastActiveValue;
+    let isActive;
 
     if (event === "open") {
-      lastActiveValue = "online";
+      isActive = "True";
     } else if (event === "close") {
-      lastActiveValue = new Date().toISOString();
+      isActive = "False";
     }
 
     const result = await User.findByIdAndUpdate(
       id,
-      { lastActive: lastActiveValue },
+      { isActive: isActive },
       { new: true }
     );
 
@@ -46,7 +46,7 @@ export const getOnlineUsersInGroup = async (request, reply) => {
 
   try {
     const onlineUsers = await User.find({
-      lastActive: "online",
+      isActive: "True",
       groupIDs: groupId,
     });
 
