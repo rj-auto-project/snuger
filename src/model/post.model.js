@@ -19,7 +19,11 @@ const postSchema = new mongoose.Schema(
     totalVotes: { type: Number, default: 0 },
     totalComment: { type: Number, default: 0 },
     voteStatus: { type: String, default: "None" },
-    reportOptions: [{ type: String }],
+    postStatus: { 
+      type: String, 
+      enum: ["Blocked", "Unblocked"], 
+      default: "Unblocked" 
+    },
     isAnonymous: { type: Boolean, default: false },
     trendingPosition: { type: Number, default: 0 },
     groupID: {type: String, default:""},

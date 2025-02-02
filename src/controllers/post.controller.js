@@ -136,3 +136,28 @@ export const deletePost = async (req, reply) => {
   }
 };
 
+// get post details
+export const getPost = async (req, reply) => {  
+  try {
+    const postId = req.params.postId;
+    console.log(`Fetching post with ID: ${postId}`);
+    const post = await Post.findById(postId)
+      .populate({
+        path: 'userId',
+        select: 'username profilePicture email'
+      })
+      .lean();
+
+    console.log('Found post:', post); // Debug log
+
+    if (!post) {
+      return reply.status(404).send({ 
+        error: "Post not found"
+      });
+    }
+    reply.send({ success: true, message: "Post fetched successfully" });
+  }    
+  catch (error) {
+    console.log('Error fetching post:', error); 
+  }
+};
