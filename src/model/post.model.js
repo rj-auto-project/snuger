@@ -22,7 +22,7 @@ const postSchema = new mongoose.Schema(
     reportOptions: [{ type: String }],
     isAnonymous: { type: Boolean, default: false },
     trendingPosition: { type: Number, default: 0 },
-    groupID: { type: mongoose.Schema.Types.ObjectId, ref: "Group" },
+    groupID: { type: mongoose.Schema.Types.ObjectId, ref: "Group" , default: null},
     location: {
       type: {
         type: String,
@@ -56,10 +56,6 @@ const postSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-postSchema.pre("save", function (next) {
-  this.totalVotes = this.totalUpvotes - this.totalDownvotes;
-  next();
-});
 
 postSchema.index({ location: "2dsphere" });
 
