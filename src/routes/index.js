@@ -10,7 +10,7 @@ import { activeStatusRoutes } from "./lastActive.routes.js";
 import { userCountRoutes } from "./userCount.routes.js";
 import { chatRoutes } from "./chat.routes.js";
 import { authRoutes } from "./auth.routes.js";
-import { getTopSnugerRoutes } from "./topSuger.route.js";
+import { getTopSnugerRoutes } from "./topSuger.routes.js";
 
 
 export const registerRoutes = async (fastify) => {

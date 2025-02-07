@@ -19,7 +19,7 @@ export const generateSignUpTokens = (phoneNumber) => {
   const signUpToken = jwt.sign({ phoneNumber }, ACCESS_TOKEN_SECRET, {
     expiresIn: "1h",
   });
-  return { signUpToken };
+  return signUpToken;
 };
 
 export const verifySignUpToken = (token) => {

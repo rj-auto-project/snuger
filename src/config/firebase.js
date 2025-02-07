@@ -8,7 +8,7 @@ const firebaseConfig = {
   storageBucket: "snuger-74ceb.firebasestorage.app",
   messagingSenderId: "304827199993",
   appId: "1:304827199993:web:db1f3032f3424c08214d28",
-  measurementId: "G-VQN00VD0SN"
+  measurementId: "G-VQN00VD0SN",
 };
 
 const firebaseApp = initializeApp(firebaseConfig);
