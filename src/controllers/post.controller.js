@@ -69,6 +69,7 @@ export const createPost = async (req, reply) => {
     }
     const parsedLocation = locations ? JSON.parse(locations) : undefined;
     const embedding = await getEmbedding(content)
+    console.log(embedding)
     // console.log()
     const post = new Post({
       userId,

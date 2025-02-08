@@ -7,6 +7,7 @@ import websocketPlugin from "@fastify/websocket"; // WebSocket plugin
 import { errorHandler } from "./src/utils/error.js";
 import { registerRoutes } from "./src/routes/index.js";
 
+
 const app = fastify();
 
 // Register plugins

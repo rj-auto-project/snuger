@@ -71,20 +71,37 @@ export const assignGroup = async (req, reply) => {
     }
     const updatedUser = await User.findOneAndUpdate(
       { _id: userID },
-      { $addToSet: { groupIDs: matchingPolygon.groupID } },
+      { 
+        $addToSet: { 
+          groupIDs: matchingPolygon._id.toString() // Convert ObjectId to string
+        } 
+      },
       { new: true, session }
     );
     console.log(updatedUser)
     if (!updatedUser) {
       throw new Error("User not found.");
     }
+    await Group.findByIdAndUpdate(
+      matchingPolygon._id,
+      { 
+        $addToSet: { 
+          members: userID 
+        } 
+      },
+      { session }
+    );
+
     await session.commitTransaction();
     session.endSession();
 
     return reply.send({
       isInside: true,
       message: "user has joined the group",
-      group: matchingPolygon.name,
+      group: {
+        id: matchingPolygon._id,
+        name: matchingPolygon.name
+      },
       user: updatedUser,
     });
   } catch (error) {

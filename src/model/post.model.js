@@ -26,7 +26,7 @@ const postSchema = new mongoose.Schema(
     },
     isAnonymous: { type: Boolean, default: false },
     trendingPosition: { type: Number, default: 0 },
-    groupID: {type: String, default:""},
+    groupID: { type: mongoose.Schema.Types.ObjectId, ref: "Group" },
     location: {
       type: {
         type: String,

@@ -39,7 +39,7 @@ export const createUser = async (req, reply) => {
       }
     }
 
-    if (!name || !username || !phoneNumber || !location || !fileBuffer) {
+    if (!name || !username || !phoneNumber || !fileBuffer) {
       return reply.code(400).send({
         error: "Missing required fields or file",
       });
