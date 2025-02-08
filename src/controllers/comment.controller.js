@@ -1,22 +1,41 @@
 import mongoose from "mongoose";
 import { Comment } from "../model/comment.model.js";
+import { Post } from "../model/post.model.js";
+import { createNotification } from "./notification.controller.js";
 
-// create comment
 export const createComment = async (req, reply) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
     const { postId, userId, content } = req.body;
-
-    if (!postId || !userId || !content) {
+    if (![postId, userId, content].every(Boolean)) {
       return reply
         .status(400)
         .send({ error: "postId, userId, and content are required" });
     }
+    const post = await Post.findById(postId).select("userId").session(session);
+    if (!post) {
+      return reply.status(404).send({ error: "Post not found" });
+    }
+    const comment = await new Comment({ postId, userId, content }).save({
+      session,
+    });
 
-    const comment = new Comment({ postId, userId, content });
-    await comment.save({ session });
+    await Post.findByIdAndUpdate(
+      postId,
+      { $inc: { totalComment: 1 } },
+      { session }
+    );
+    if (userId.toString() === post.userId.toString()) {
+      await createNotification({
+        userId: post.userId,
+        type: "comment",
+        sourceId: postId,
+        onModel: "Post",
+        actorId: userId,
+      });
+    }
 
     await session.commitTransaction();
     session.endSession();

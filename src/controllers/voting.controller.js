@@ -72,7 +72,7 @@ export const voteStatus = async (req, reply) => {
       await User.findByIdAndUpdate(post.userId, { $inc: { snugScore: snugScoreChange } }, { session });
     }
 
-    if (userId.toString() === post.userId.toString() && voteStatus === "upvote" && !isUpvoted) {
+    if (userId.toString() !== post.userId.toString() && voteStatus === "upvote" && !isUpvoted) {
       await createNotification({
         userId: post.userId,
         type: "upvote",

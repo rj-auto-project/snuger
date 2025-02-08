@@ -71,14 +71,11 @@ export async function createNotification({
   actorId,
 }) {
   try {
-    const existingNotification = await Notification.findOne({
-      userId,
-      type,
-      sourceId,
-      onModel,
-      actorId,
-    });
-
+    const existingNotification = await Notification.findOneAndUpdate(
+      { userId, type, sourceId, onModel, actorId },
+      { $set: { updatedAt: new Date() } },
+      { new: true }
+    );
     if (existingNotification) {
       console.log(
         "Notification already exists, sending push notification only"
