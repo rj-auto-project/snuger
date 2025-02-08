@@ -1,51 +1,50 @@
+import { messaging } from "../config/firebase.js";
 import Notification from "../model/notification.model.js";
 import { User } from "../model/user.model.js";
 
 export async function sendPushNotification(notification) {
-    try {
-      const user = await User.findById(notification.userId);
-      const actor = await User.findById(notification.actorId);
-  
-      if (!user?.fcmToken) return;
-  
-      const notificationData = await this.formatNotification(notification, actor);
-  
-      const message = {
-        token: user.fcmToken,
-        notification: {
-          title: notificationData.title,
-          body: notificationData.body,
-        },
-        data: {
-          type: notification.type,
-          sourceId: notification.sourceId.toString(),
-          notificationId: notification._id.toString(),
-        },
-        android: {
-          priority: "high",
-          notification: {
-            channelId: "default",
-            clickAction: "REACT_NATIVE_ClICK_ACTION",
-          },
-        },
-        apns: {
-          payload: {
-            aps: {
-              sound: "default",
-              badge: 1,
-            },
-          },
-        },
-      };
-  
-      await admin.messaging().send(message);
-    } catch (error) {
-      console.error("Error sending push notification:", error);
-      // Log to monitoring service but don't throw
-    }
-  }
+  try {
+    const user = await User.findById(notification.userId);
+    const actor = await User.findById(notification.actorId);
 
-  
+    if (!user?.fcmToken) return;
+
+    const notificationData = await this.formatNotification(notification, actor);
+
+    const message = {
+      token: user.fcmToken,
+      notification: {
+        title: notificationData.title,
+        body: notificationData.body,
+      },
+      data: {
+        type: notification.type,
+        sourceId: notification.sourceId.toString(),
+        notificationId: notification._id.toString(),
+      },
+      android: {
+        priority: "high",
+        notification: {
+          channelId: "default",
+          clickAction: "REACT_NATIVE_ClICK_ACTION",
+        },
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: "default",
+            badge: 1,
+          },
+        },
+      },
+    };
+
+    await messaging.send(message);
+  } catch (error) {
+    console.error("Error sending push notification:", error);
+    // Log to monitoring service but don't throw
+  }
+}
 
 export async function createNotification({
   userId,
@@ -70,7 +69,6 @@ export async function createNotification({
     throw error;
   }
 }
-
 
 export async function formatNotification(notification, actor) {
   const templates = {
