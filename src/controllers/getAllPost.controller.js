@@ -3,36 +3,82 @@ import { User } from "../model/user.model.js";
 import mongoose from "mongoose";
 
 export const getPostsByLocation = async (req, reply) => {
-  const { lat, long, page = 1, limit = 10 } = req.query;
-  
+  const { lat, long, page = 1, limit = 10, userId } = req.query;
+
   if (!lat || !long) {
     return reply.status(400).send({
-      error: "Latitude and Longitude are required to fetch nearby snugs.",
+      error: "Latitude and Longitude are required to fetch nearby posts.",
     });
   }
 
   try {
     const radiusInMeters = 5000;
-    const posts = await Post.find({
-      location: {
-        $near: {
-          $geometry: {
-            type: "Point",
-            coordinates: [parseFloat(long), parseFloat(lat)],
-          },
-          $maxDistance: radiusInMeters,
+
+    const posts = await Post.aggregate([
+      {
+        $geoNear: {
+          near: { type: "Point", coordinates: [parseFloat(long), parseFloat(lat)] },
+          distanceField: "distance",
+          maxDistance: radiusInMeters,
+          spherical: true,
         },
       },
-      $or: [
-        { groupID: { $exists: false } },  // groupID field doesn't exist
-        { groupID: null }                 // groupID is null
-      ]
-    })
-      .populate("userId", "username profileImage")
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean();
+      {
+        $match: {
+          $or: [{ groupID: { $exists: false } }, { groupID: null }],
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
+      {
+        $lookup: {
+          from: "votes",
+          let: { postId: "$_id", userId: userId ? new mongoose.Types.ObjectId(userId) : null },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [{ $eq: ["$postId", "$$postId"] }, { $eq: ["$userId", "$$userId"] }],
+                },
+              },
+            },
+            { $project: { _id: 0, type: 1 } },
+          ],
+          as: "userVote",
+        },
+      },
+      {
+        $addFields: {
+          userVote: { $arrayElemAt: ["$userVote.type", 0] },
+        },
+      },
+      {
+        $project: {
+          content: 1,
+          images: 1,
+          videos: 1,
+          audios: 1,
+          totalUpvotes: 1,
+          totalDownvotes: 1,
+          totalVotes: 1,
+          totalComment: 1,
+          location: 1,
+          createdAt: 1,
+          user: { username: 1, profileImage: 1 },
+          userVote: 1,
+        },
+      },
+      { $sort: { createdAt: -1 } },
+      { $skip: (page - 1) * limit },
+      { $limit: Number(limit) },
+    ]);
 
     reply.send({
       success: true,
@@ -48,6 +94,7 @@ export const getPostsByLocation = async (req, reply) => {
     });
   }
 };
+
 
 
 // get post by group
