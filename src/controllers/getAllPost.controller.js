@@ -71,7 +71,7 @@ export const getPostsByLocation = async (req, reply) => {
           totalComment: 1,
           location: 1,
           createdAt: 1,
-          user: { username: 1, profileImage: 1 },
+          user: { username: 1, profileImage: 1, name: 1 },
           userVote: 1,
         },
       },
