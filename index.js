@@ -7,7 +7,7 @@ import fastifyCors from "@fastify/cors";
 import { errorHandler } from "./src/utils/error.js";
 import { registerRoutes } from "./src/routes/index.js";
 import fastifySocketIO from "fastify-socket.io";
-
+import { handleSocketEvents } from "./src/config/socketHandler.js";
 
 const app = fastify();
 
@@ -39,6 +39,11 @@ app.register(fastifySocketIO, {
   pingTimeout: 5000,
 });
 
+app.ready().then(() => {
+  console.log("Socket.io server ready!");
+  app.io.on("connection", (socket) => handleSocketEvents(socket, app.io));
+});
+
 // Start server
 const start = async () => {
   try {
@@ -57,26 +62,5 @@ const start = async () => {
     process.exit(1);
   }
 };
-
-app.ready().then(() => {
-  app.io.on("connection", (socket) => {
-    socket.on("joinChat", (chatId) => {
-      socket.join(chatId);
-      console.log("connected to chat", chatId);
-    });
-
-    socket.on("sendMessage", async ({ chatId, message }) => {
-      try {
-        const newMessage = await messageService.createMessage({
-          ...message,
-          chat: chatId,
-        });
-        app.io.to(chatId).emit("newMessage", newMessage);
-      } catch (error) {
-        socket.emit("error", error.message);
-      }
-    });
-  });
-});
 
 start();
