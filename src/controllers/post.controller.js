@@ -11,14 +11,13 @@ const storage = new Storage({
 });
 const bucketName = "snuger";
 
-// create post
 export const createPost = async (req, reply) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
     const parts = req.parts();
-    let userId, content, isAnonymous, locations, groupID;
+    let userId, content, isAnonymous, locations, groupID, pollData;
     let imageURLs = [], videoURLs = [], audioURLs = [];
 
     for await (const part of parts) {
@@ -48,42 +47,86 @@ export const createPost = async (req, reply) => {
           audioURLs.push(publicUrl);
         }
       } else {
+        const value = part.value;
         switch (part.fieldname) {
           case "userId":
-            userId = part.value;
+            userId = value;
             break;
           case "isAnonymous":
-            isAnonymous = part.value;
+            isAnonymous = value === 'true';
             break;
           case "location":
-            locations = part.value;
+            locations = value;
             break;
           case "content":
-            content = part.value;
+            content = value;
             break;
           case "groupID":
-            groupID = part.value;
+            groupID = value || null;
+            break;
+          case "poll":
+            try {
+              pollData = JSON.parse(value);
+            } catch (e) {
+              console.error("Error parsing poll data:", e);
+            }
             break;
         }
       }
     }
-    const parsedLocation = locations ? JSON.parse(locations) : undefined;
-    const embedding = await getEmbedding(content)
-    console.log(embedding)
-    // console.log()
-    const post = new Post({
+
+    // Validate required userId
+    if (!userId) {
+      return reply.status(400).send({
+        error: "Bad Request",
+        message: "userId is required"
+      });
+    }
+
+    // Process location data
+    const parsedLocation = locations ? JSON.parse(locations) : {
+      type: "Point",
+      coordinates: [87.2620756305604, 24.285815044316077]
+    };
+
+    // Process poll data if provided
+    let poll = null;
+    if (pollData) {
+      poll = {
+        question: pollData.question,
+        options: pollData.options.map(opt => ({
+          text: opt,
+          votes: [],
+          voteCount: 0
+        })),
+        expiresAt: new Date(Date.now() + (pollData.durationInDays || 7) * 24 * 60 * 60 * 1000),
+        totalVotes: 0,
+        isActive: true,
+        allowMultipleVotes: pollData.allowMultipleVotes || false
+      };
+    }
+
+    const embedding = content ? await getEmbedding(content) : [];
+
+    // Create post object
+    const postData = {
       userId,
       content,
-      isAnonymous,
-      location:parsedLocation
-      ? { type: "Point", coordinates: parsedLocation }
-      : undefined,
+      isAnonymous: isAnonymous || false,
+      location: parsedLocation,
       images: imageURLs,
       videos: videoURLs,
       audios: audioURLs,
-      embedding:embedding,
-      groupID:groupID
-    });
+      embedding,
+      groupID: groupID || null
+    };
+
+    // Add poll if exists
+    if (poll) {
+      postData.poll = poll;
+    }
+
+    const post = new Post(postData);
     await post.save({ session });
     await session.commitTransaction();
     session.endSession();
@@ -160,5 +203,124 @@ export const getPost = async (req, reply) => {
   }    
   catch (error) {
     console.log('Error fetching post:', error); 
+  }
+};
+
+// Add this helper function to find and remove previous vote
+const removeUserPreviousVote = (poll, userId) => {
+  for (const option of poll.options) {
+    const voteIndex = option.votes.indexOf(userId);
+    if (voteIndex !== -1) {
+      option.votes.splice(voteIndex, 1);
+      option.voteCount -= 1;
+      poll.totalVotes -= 1;
+      return true;
+    }
+  }
+  return false;
+};
+
+export const votePoll = async (req, reply) => {
+  try {
+    const { postId, optionId } = req.params;
+    const { userId } = req.body;
+
+    if (!postId || !optionId || !userId) {
+      return reply.status(400).send({
+        success: false,
+        message: "postId, optionId, and userId are required"
+      });
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) {
+      return reply.status(404).send({
+        success: false,
+        message: "Post not found"
+      });
+    }
+
+    if (!post.poll) {
+      return reply.status(400).send({
+        success: false,
+        message: "This post does not have a poll"
+      });
+    }
+
+    if (!post.poll.isActive) {
+      return reply.status(400).send({
+        success: false,
+        message: "This poll is no longer active"
+      });
+    }
+
+    if (post.poll.expiresAt < new Date()) {
+      post.poll.isActive = false;
+      await post.save();
+      return reply.status(400).send({
+        success: false,
+        message: "This poll has expired"
+      });
+    }
+
+    // Find the option to vote for
+    const option = post.poll.options.id(optionId);
+    if (!option) {
+      return reply.status(404).send({
+        success: false,
+        message: "Poll option not found"
+      });
+    }
+
+    // Check if user already voted for this option
+    if (option.votes.includes(userId)) {
+      return reply.status(400).send({
+        success: false,
+        message: "You have already voted for this option"
+      });
+    }
+
+    // If multiple votes aren't allowed, remove previous vote if exists
+    if (!post.poll.allowMultipleVotes) {
+      const hadPreviousVote = removeUserPreviousVote(post.poll, userId);
+      // if (hadPreviousVote) {
+      //   console.log(`Removed previous vote from user ${userId}`);
+      // }
+    }
+
+    // Add new vote
+    option.votes.push(userId);
+    option.voteCount += 1;
+    post.poll.totalVotes += 1;
+
+    await post.save();
+
+    return reply.status(200).send({
+      success: true,
+      message: "Vote recorded successfully",
+      timestamp: "2025-02-09 16:50:33",
+      queriedBy: "Ayan-1315",
+      poll: {
+        question: post.poll.question,
+        options: post.poll.options.map(opt => ({
+          _id: opt._id,
+          text: opt.text,
+          voteCount: opt.voteCount,
+          percentage: (opt.voteCount / post.poll.totalVotes * 100).toFixed(2) + '%',
+          hasUserVoted: opt.votes.includes(userId)
+        })),
+        totalVotes: post.poll.totalVotes,
+        isActive: post.poll.isActive,
+        expiresAt: post.poll.expiresAt,
+        allowMultipleVotes: post.poll.allowMultipleVotes
+      }
+    });
+  } catch (error) {
+    console.error("Vote error:", error);
+    return reply.status(500).send({
+      success: false,
+      message: "Error recording vote",
+      details: error.message
+    });
   }
 };
