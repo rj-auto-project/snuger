@@ -14,11 +14,8 @@ const postSchema = new mongoose.Schema(
     audios: [{ type: String }],
     totalUpvotes: { type: Number, default: 0 }, // Total count of upvotes
     totalDownvotes: { type: Number, default: 0 }, // Total count of downvotes
-    upvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // Array of user IDs who upvoted
-    downvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // Array of user IDs who downvoted
     totalVotes: { type: Number, default: 0 },
     totalComment: { type: Number, default: 0 },
-    voteStatus: { type: String, default: "None" },
     reportOptions: [{ type: String }],
     isAnonymous: { type: Boolean, default: false },
     trendingPosition: { type: Number, default: 0 },
