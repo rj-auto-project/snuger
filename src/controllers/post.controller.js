@@ -11,7 +11,6 @@ const storage = new Storage({
 });
 const bucketName = "snuger";
 
-// create post
 export const createPost = async (req, reply) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -20,7 +19,6 @@ export const createPost = async (req, reply) => {
     const parts = req.parts();
     let userId, content, isAnonymous, locations, groupID;
     let imageURLs = [], videoURLs = [], audioURLs = [];
-
     for await (const part of parts) {
       if (part.file) {
         const fileBuffer = await part.toBuffer();
@@ -33,20 +31,13 @@ export const createPost = async (req, reply) => {
           const file = bucket.file(fileName);
           await file.save(fileBuffer, options);
         } catch (error) {
-          return reply.status(500).send({
-            error: "Media file upload failed",
-            details: error.message,
-          });
+          throw new Error(`Media file upload failed: ${error.message}`);
         }
 
         const publicUrl = `https://storage.googleapis.com/${bucketName}/${fileName}`;
-        if (fileType === "image") {
-          imageURLs.push(publicUrl);
-        } else if (fileType === "video") {
-          videoURLs.push(publicUrl);
-        } else if (fileType === "audio") {
-          audioURLs.push(publicUrl);
-        }
+        if (fileType === "image") imageURLs.push(publicUrl);
+        else if (fileType === "video") videoURLs.push(publicUrl);
+        else if (fileType === "audio") audioURLs.push(publicUrl);
       } else {
         switch (part.fieldname) {
           case "userId":
@@ -67,24 +58,32 @@ export const createPost = async (req, reply) => {
         }
       }
     }
+
+
     const parsedLocation = locations ? JSON.parse(locations) : undefined;
-    const embedding = await getEmbedding(content)
-    console.log(embedding)
-    // console.log()
+    const embedding = await getEmbedding(content);
+
     const post = new Post({
       userId,
       content,
       isAnonymous,
-      location:parsedLocation
-      ? { type: "Point", coordinates: parsedLocation }
-      : undefined,
+      location: parsedLocation
+        ? { type: "Point", coordinates: parsedLocation }
+        : undefined,
       images: imageURLs,
       videos: videoURLs,
       audios: audioURLs,
-      embedding:embedding,
-      groupID:groupID
+      embedding: embedding,
+      groupID: groupID,
     });
-    await post.save({ session });
+    await Promise.all([
+      post.save({ session }),
+      User.updateOne(
+        { _id: userId },
+        { $inc: { totalSnugs: 1 } },
+        { session }
+      ),
+    ]);
     await session.commitTransaction();
     session.endSession();
 
@@ -103,25 +102,33 @@ export const createPost = async (req, reply) => {
   }
 };
 
-// delete post
+
+
 export const deletePost = async (req, reply) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
     const { postId } = req.params;
-
     if (!postId) {
+      await session.abortTransaction();
+      session.endSession();
       return reply.status(400).send({ error: "postId is required" });
     }
 
     const post = await Post.findById(postId).session(session);
-
     if (!post) {
+      await session.abortTransaction();
+      session.endSession();
       return reply.status(404).send({ error: "Post not found" });
     }
 
     await Post.deleteOne({ _id: postId }).session(session);
+    await User.updateOne(
+      { _id: post.userId },
+      { $inc: { totalSnugs: -1 } },
+      { session }
+    );
 
     await session.commitTransaction();
     session.endSession();
@@ -130,6 +137,7 @@ export const deletePost = async (req, reply) => {
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
+
     reply.status(500).send({
       error: "Failed to delete post",
       details: error.message,
