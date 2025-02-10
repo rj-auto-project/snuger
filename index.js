@@ -1,4 +1,5 @@
 // index.js
+import './src/workers/trendingWorker.js'
 import fastify from "fastify";
 import { connectDB } from "./src/config/connect.js";
 import env from "./src/config/env.js";
@@ -7,6 +8,7 @@ import fastifyCors from "@fastify/cors";
 import { errorHandler } from "./src/utils/error.js";
 import { registerRoutes } from "./src/routes/index.js";
 import fastifySocketIO from "fastify-socket.io";
+
 
 
 const app = fastify();

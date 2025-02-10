@@ -19,7 +19,11 @@ const postSchema = new mongoose.Schema(
     reportOptions: [{ type: String }],
     isAnonymous: { type: Boolean, default: false },
     trendingPosition: { type: Number, default: 0 },
-    groupID: { type: mongoose.Schema.Types.ObjectId, ref: "Group" , default: null},
+    groupID: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Group",
+      default: null,
+    },
     location: {
       type: {
         type: String,
@@ -53,7 +57,10 @@ const postSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-
 postSchema.index({ location: "2dsphere" });
+postSchema.index({ createdAt: -1 });
+postSchema.index({ totalVotes: -1 });
+postSchema.index({ userId: 1 });
+postSchema.index({ groupID: 1 });
 
 export const Post = mongoose.model("Post", postSchema);
