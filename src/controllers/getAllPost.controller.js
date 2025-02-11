@@ -19,7 +19,7 @@ export const getPostsByLocation = async (req, reply) => {
         $geoNear: {
           near: {
             type: "Point",
-            coordinates: [parseFloat(long), parseFloat(lat)],
+            coordinates: [parseFloat(lat), parseFloat(long)],
           },
           distanceField: "distance",
           maxDistance: radiusInMeters,
