@@ -107,6 +107,7 @@ export const createPost = async (req, reply) => {
 export const deletePost = async (req, reply) => {
   const session = await mongoose.startSession();
   session.startTransaction();
+  const userId = req.user._id;
 
   try {
     const { postId } = req.params;
@@ -119,6 +120,14 @@ export const deletePost = async (req, reply) => {
 
     if (!post) {
       return reply.status(404).send({ error: "Post not found" });
+    }
+
+    // Check if the user is the owner of the post
+    if (post.userId.toString() !== userId.toString()) {
+      return reply.status(403).send({ 
+        error: "Unauthorized", 
+        message: "You can only delete your own posts" 
+      });
     }
 
     await Post.deleteOne({ _id: postId }).session(session);

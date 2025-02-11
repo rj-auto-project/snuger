@@ -9,7 +9,9 @@ export const authGuard = async (request, reply) => {
     }
     const token = authHeader.split(' ')[1];
     const decoded = verifyToken(token);
+    console.log(token)
     request.user = decoded;
+    console.log(decoded)
   } catch (error) {
     reply.code(401).send({ error: 'Unauthorized' });
   }

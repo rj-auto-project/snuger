@@ -7,14 +7,16 @@ export const voteStatus = async (req, reply) => {
   session.startTransaction();
 
   try {
-    const { userId, postId, voteStatus } = req.body;
+    const { postId, voteStatus } = req.body;
+    const userId = req.user.userId;
+    console.log(userId)
 
     if (!["upvote", "downvote"].includes(voteStatus)) {
       return reply.status(400).send({ message: "Invalid vote status" });
     }
 
     if (!userId) {
-      return reply.status(400).send({ message: "User ID is required" });
+      return reply.status(401).send({ message: "Authentication required" });
     }
 
     const post = await Post.findById(postId).session(session);
