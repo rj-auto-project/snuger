@@ -36,9 +36,11 @@ export const getTopSnuger = async (req, reply) => {
       },
     };
 
-    const groupQuery = { groupIDs: groupId };
+    // Updated query to match _id instead of groupIDs
+    const groupQuery = { _id: new mongoose.Types.ObjectId(groupId) };
+
     // Fetch top 10 snugers within a 5km radius
-    const topSnugersInRadius = await User.find()
+    const topSnugersInRadius = await User.find(geoQuery)
       .sort({ snugScore: -1 }) // Sort by snugScore in descending order
       .limit(10)
       .session(session);
