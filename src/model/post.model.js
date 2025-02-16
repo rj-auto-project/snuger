@@ -31,6 +31,7 @@ const postSchema = new mongoose.Schema(
         required: true,
         default: "Point",
       },
+      // always put longitude at 0th and latitude at 1st position
       coordinates: {
         type: [Number],
         required: true,
