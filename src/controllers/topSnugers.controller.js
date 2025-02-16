@@ -23,7 +23,8 @@ export const getTopSnuger = async (req, reply) => {
         message: "groupId is required",
       });
     }
-
+    
+    // Fetch top 10 snugers within a 5km radius
     const geoQuery = {
       location: {
         $near: {
@@ -35,17 +36,13 @@ export const getTopSnuger = async (req, reply) => {
         },
       },
     };
-
-    // Updated query to match _id instead of groupIDs
-    const groupQuery = { _id: new mongoose.Types.ObjectId(groupId) };
-
-    // Fetch top 10 snugers within a 5km radius
     const topSnugersInRadius = await User.find(geoQuery)
-      .sort({ snugScore: -1 }) // Sort by snugScore in descending order
-      .limit(10)
-      .session(session);
-
+    .sort({ snugScore: -1 }) // Sort by snugScore in descending order
+    .limit(10)
+    .session(session);
+    
     // Fetch top 10 snugers in the specified group
+    const groupQuery = { groupIDs: new mongoose.Types.ObjectId(groupId) };
     const topSnugersInGroup = await User.find(groupQuery)
       .sort({ snugScore: -1 }) // Sort by snugScore in descending order
       .limit(10)

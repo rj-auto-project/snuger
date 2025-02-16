@@ -9,7 +9,10 @@ const userSchema = new mongoose.Schema(
     snugScore: { type: Number, default: 0 },
     totalSnugs: { type: Number, default: 0 },
     snugRank: { type: Number, default: 0 },
-    groupIDs: [{ type: String }],
+    groupIDs: [{ 
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Group'
+    }],
     isActive: { type: String },
     location: {
       type: {
