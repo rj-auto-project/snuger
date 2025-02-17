@@ -1,26 +1,18 @@
 import { User } from "../model/user.model.js";
-
 import mongoose from "mongoose";
 
-// Controller to fetch top snugers
 export const getTopSnuger = async (req, reply) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    const { longitude, latitude, groupId } = req.query;
+    const { longitude, latitude, groupId } = req.body;
 
     // Validate required parameters
     if (!longitude || !latitude) {
       return reply.status(400).send({
         success: false,
         message: "longitude and latitude are required",
-      });
-    }
-    if (!groupId) {
-      return reply.status(400).send({
-        success: false,
-        message: "groupId is required",
       });
     }
     
@@ -36,28 +28,34 @@ export const getTopSnuger = async (req, reply) => {
         },
       },
     };
-    const topSnugersInRadius = await User.find(geoQuery)
-    .sort({ snugScore: -1 }) // Sort by snugScore in descending order
-    .limit(10)
-    .session(session);
     
-    // Fetch top 10 snugers in the specified group
-    const groupQuery = { groupIDs: new mongoose.Types.ObjectId(groupId) };
-    const topSnugersInGroup = await User.find(groupQuery)
-      .sort({ snugScore: -1 }) // Sort by snugScore in descending order
+    const topSnugersInRadius = await User.find(geoQuery)
+      .sort({ snugScore: -1 })
       .limit(10)
       .session(session);
+    
+    let response = {
+      success: true,
+      data: {
+        topSnugersInRadius
+      }
+    };
+
+    // Only fetch group snugers if groupId is provided
+    if (groupId) {
+      const groupQuery = { groupIDs: new mongoose.Types.ObjectId(groupId) };
+      const topSnugersInGroup = await User.find(groupQuery)
+        .sort({ snugScore: -1 })
+        .limit(10)
+        .session(session);
+      
+      response.data.topSnugersInGroup = topSnugersInGroup;
+    }
 
     await session.commitTransaction();
     session.endSession();
 
-    return reply.status(200).send({
-      success: true,
-      data: {
-        topSnugersInRadius,
-        topSnugersInGroup,
-      },
-    });
+    return reply.status(200).send(response);
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
