@@ -1,0 +1,159 @@
+import mongoose from "mongoose";
+import { Post } from "../model/post.model.js";
+import { Storage } from "@google-cloud/storage";
+import { credentials } from "../../credentials.js";
+import { getEmbedding } from "../service/getEmbedding.service.js";
+import { User } from "../model/user.model.js";
+
+const storage = new Storage({
+  projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+  credentials: credentials,
+});
+const bucketName = "snuger";
+
+// create post
+export const createPost = async (req, reply) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const parts = req.parts();
+    let userId, content, isAnonymous, locations, groupID;
+    let imageURLs = [], videoURLs = [], audioURLs = [];
+
+    for await (const part of parts) {
+      if (part.file) {
+        const fileBuffer = await part.toBuffer();
+        const fileName = part.filename;
+        const fileType = part.mimetype.split("/")[0];
+        const options = { destination: fileName, gzip: true };
+
+        try {
+          const bucket = storage.bucket(bucketName);
+          const file = bucket.file(fileName);
+          await file.save(fileBuffer, options);
+        } catch (error) {
+          return reply.status(500).send({
+            error: "Media file upload failed",
+            details: error.message,
+          });
+        }
+
+        const publicUrl = `https://storage.googleapis.com/${bucketName}/${fileName}`;
+        if (fileType === "image") {
+          imageURLs.push(publicUrl);
+        } else if (fileType === "video") {
+          videoURLs.push(publicUrl);
+        } else if (fileType === "audio") {
+          audioURLs.push(publicUrl);
+        }
+      } else {
+        switch (part.fieldname) {
+          case "userId":
+            userId = part.value;
+            break;
+          case "isAnonymous":
+            isAnonymous = part.value;
+            break;
+          case "location":
+            locations = part.value;
+            break;
+          case "content":
+            content = part.value;
+            break;
+          case "groupID":
+            groupID = part.value;
+            break;
+        }
+      }
+    }
+    const parsedLocation = locations ? JSON.parse(locations) : undefined;
+    const embedding = await getEmbedding(content)
+    // console.log()
+    const post = new Post({
+      userId,
+      content,
+      isAnonymous,
+      location:parsedLocation
+      ? { type: "Point", coordinates: parsedLocation }
+      : undefined,
+      images: imageURLs,
+      videos: videoURLs,
+      audios: audioURLs,
+      embedding:embedding,
+      groupID:groupID
+    });
+    await post.save({ session });
+    await User.updateOne(
+      { _id: userId },
+      { $inc: { totalSnugs: 1 } },
+      { session }
+    );
+    await session.commitTransaction();
+    session.endSession();
+
+    reply.status(200).send({
+      message: "Post created successfully",
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+
+    reply.status(500).send({
+      error: "Error creating post",
+      details: error.message,
+    });
+  }
+};
+
+
+export const deletePost = async (req, reply) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  const userId = req.user._id;
+
+  try {
+    const { postId } = req.params;
+    if (!postId) {
+      await session.abortTransaction();
+      session.endSession();
+      return reply.status(400).send({ error: "postId is required" });
+    }
+
+    const post = await Post.findById(postId).session(session);
+    if (!post) {
+      await session.abortTransaction();
+      session.endSession();
+      return reply.status(404).send({ error: "Post not found" });
+    }
+
+    // Check if the user is the owner of the post
+    if (post.userId.toString() !== userId.toString()) {
+      return reply.status(403).send({ 
+        error: "Unauthorized", 
+        message: "You can only delete your own posts" 
+      });
+    }
+
+    await Post.deleteOne({ _id: postId }).session(session);
+    await User.updateOne(
+      { _id: post.userId },
+      { $inc: { totalSnugs: -1 } },
+      { session }
+    );
+
+    await session.commitTransaction();
+    session.endSession();
+
+    reply.send({ success: true, message: "Post deleted successfully" });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+
+    reply.status(500).send({
+      error: "Failed to delete post",
+      details: error.message,
+    });
+  }
+};
+

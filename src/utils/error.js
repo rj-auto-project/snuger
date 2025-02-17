@@ -27,3 +27,14 @@ export function errorHandler(error, request, reply) {
     });
   }
   
+
+
+
+  export class APIError extends Error {
+    constructor(statusCode, message) {
+      super(message);
+      this.statusCode = statusCode;
+      Error.captureStackTrace(this, this.constructor);
+    }
+  }
+  

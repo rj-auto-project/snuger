@@ -1,6 +1,7 @@
-require('dotenv').config();
+import dotenv from "dotenv";
+dotenv.config();
 
-const credentials = {
+export const credentials = {
   type: 'service_account',
   project_id: process.env.GOOGLE_CLOUD_PROJECT_ID,
   private_key_id: process.env.PRIVATE_KEY_ID,
@@ -12,6 +13,3 @@ const credentials = {
   auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
   client_x509_cert_url: process.env.CERT_URL,
 };
-
-
-module.exports = credentials;
