@@ -5,7 +5,6 @@ import mongoose from "mongoose";
 
 export const getPostsByLocation = async (req, reply) => {
   const { lat, long, page = 1, limit = 10 } = req.query;
-
   if (!lat || !long) {
     return reply.status(400).send({
       error: "Latitude and Longitude are required to fetch nearby snugs.",
