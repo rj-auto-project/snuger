@@ -14,15 +14,16 @@ const postSchema = new mongoose.Schema(
     audios: [{ type: String }],
     totalUpvotes: { type: Number, default: 0 }, // Total count of upvotes
     totalDownvotes: { type: Number, default: 0 }, // Total count of downvotes
-    upvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // Array of user IDs who upvoted
-    downvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], // Array of user IDs who downvoted
     totalVotes: { type: Number, default: 0 },
     totalComment: { type: Number, default: 0 },
-    voteStatus: { type: String, default: "None" },
     reportOptions: [{ type: String }],
     isAnonymous: { type: Boolean, default: false },
     trendingPosition: { type: Number, default: 0 },
-    groupID: { type: mongoose.Schema.Types.ObjectId, ref: "Group" , default: null},
+    groupID: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Group",
+      default: null,
+    },
     location: {
       type: {
         type: String,
@@ -57,7 +58,10 @@ const postSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-
 postSchema.index({ location: "2dsphere" });
+postSchema.index({ createdAt: -1 });
+postSchema.index({ totalVotes: -1 });
+postSchema.index({ userId: 1 });
+postSchema.index({ groupID: 1 });
 
 export const Post = mongoose.model("Post", postSchema);

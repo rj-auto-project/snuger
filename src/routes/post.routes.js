@@ -1,14 +1,13 @@
 import fastifyMultipart from "@fastify/multipart";
+import { createPost, deletePost } from "../controllers/post.controller.js";
+
 import {
-  createPost,
-  deletePost,
-
-} from "../controllers/post.controller.js";
-
-import {  getPostsByLocation,
+  getPostsByLocation,
   getGroupPosts,
-  getTopPosts } from "../controllers/getAllPost.controller.js"
-  
+  getTopPosts,
+  getPostsByUserId,
+} from "../controllers/getAllPost.controller.js";
+
 export const postRoutes = async (fastify) => {
   fastify.register(fastifyMultipart, {
     addToBody: true,
@@ -26,5 +25,6 @@ export const postRoutes = async (fastify) => {
   // get post
   fastify.get("/location", getPostsByLocation);
   fastify.get("/group", getGroupPosts);
-  fastify.get("/hots",getTopPosts)
+  fastify.get("/hots", getTopPosts);
+  fastify.get("/get-user-posts", getPostsByUserId);
 };

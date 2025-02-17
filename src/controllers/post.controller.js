@@ -69,7 +69,6 @@ export const createPost = async (req, reply) => {
     }
     const parsedLocation = locations ? JSON.parse(locations) : undefined;
     const embedding = await getEmbedding(content)
-    console.log(embedding)
     // console.log()
     const post = new Post({
       userId,
@@ -85,12 +84,16 @@ export const createPost = async (req, reply) => {
       groupID:groupID
     });
     await post.save({ session });
+    await User.updateOne(
+      { _id: userId },
+      { $inc: { totalSnugs: 1 } },
+      { session }
+    );
     await session.commitTransaction();
     session.endSession();
 
     reply.status(200).send({
       message: "Post created successfully",
-      post,
     });
   } catch (error) {
     await session.abortTransaction();
@@ -103,7 +106,7 @@ export const createPost = async (req, reply) => {
   }
 };
 
-// delete post
+
 export const deletePost = async (req, reply) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -111,14 +114,16 @@ export const deletePost = async (req, reply) => {
 
   try {
     const { postId } = req.params;
-
     if (!postId) {
+      await session.abortTransaction();
+      session.endSession();
       return reply.status(400).send({ error: "postId is required" });
     }
 
     const post = await Post.findById(postId).session(session);
-
     if (!post) {
+      await session.abortTransaction();
+      session.endSession();
       return reply.status(404).send({ error: "Post not found" });
     }
 
@@ -131,6 +136,11 @@ export const deletePost = async (req, reply) => {
     }
 
     await Post.deleteOne({ _id: postId }).session(session);
+    await User.updateOne(
+      { _id: post.userId },
+      { $inc: { totalSnugs: -1 } },
+      { session }
+    );
 
     await session.commitTransaction();
     session.endSession();
@@ -139,6 +149,7 @@ export const deletePost = async (req, reply) => {
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
+
     reply.status(500).send({
       error: "Failed to delete post",
       details: error.message,

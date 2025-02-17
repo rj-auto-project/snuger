@@ -9,7 +9,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ["LIKE", "COMMENT", "FOLLOW", "MENTION"],
+    enum: ["upvote", "downvote", "reach", "comment"],
     required: true,
   },
   sourceId: {
@@ -20,7 +20,7 @@ const notificationSchema = new mongoose.Schema({
   onModel: {
     type: String,
     required: true,
-    enum: ["Post", "Comment"],
+    enum: ["Post",],
   },
   actorId: {
     type: mongoose.Schema.Types.ObjectId,

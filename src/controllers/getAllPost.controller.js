@@ -4,23 +4,26 @@ import mongoose from "mongoose";
 
 export const getPostsByLocation = async (req, reply) => {
   const { lat, long, page = 1, limit = 10 } = req.query;
-
   if (!lat || !long) {
     return reply.status(400).send({
-      error: "Latitude and Longitude are required to fetch nearby snugs.",
+      error: "Latitude and Longitude are required to fetch nearby posts.",
     });
   }
 
+
   try {
     const radiusInMeters = 5000;
-    const posts = await Post.find({
-      location: {
-        $near: {
-          $geometry: {
+
+    const posts = await Post.aggregate([
+      {
+        $geoNear: {
+          near: {
             type: "Point",
             coordinates: [parseFloat(long), parseFloat(lat)],
           },
-          $maxDistance: radiusInMeters,
+          distanceField: "distance",
+          maxDistance: radiusInMeters,
+          spherical: true,
         },
       },
       $or: [

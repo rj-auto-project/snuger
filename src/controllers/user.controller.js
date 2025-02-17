@@ -152,7 +152,7 @@ export const updateUser = async (req, reply) => {
   session.startTransaction();
   try {
     const parts = req.parts();
-    let userId, name, username, phoneNumber, location, fileBuffer, fileName;
+    let userId, name, username, phoneNumber, fileBuffer, fileName;
 
     for await (const part of parts) {
       if (part.file) {
@@ -171,9 +171,6 @@ export const updateUser = async (req, reply) => {
             break;
           case "phoneNumber":
             phoneNumber = part.value;
-            break;
-          case "location":
-            location = part.value;
             break;
         }
       }
@@ -240,21 +237,6 @@ export const updateUser = async (req, reply) => {
 
     if (name) {
       user.name = name;
-    }
-
-    if (location) {
-      const parsedLocation = JSON.parse(location);
-      if (
-        !Array.isArray(parsedLocation) ||
-        parsedLocation.length !== 2 ||
-        isNaN(parsedLocation[0]) ||
-        isNaN(parsedLocation[1])
-      ) {
-        throw new Error(
-          "Invalid location format. Expected [longitude, latitude]."
-        );
-      }
-      user.location = { type: "Point", coordinates: parsedLocation };
     }
 
     await user.save({ session });

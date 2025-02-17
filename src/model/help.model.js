@@ -10,7 +10,7 @@ const helpSchema = new mongoose.Schema(
     content: { type: String },
     images: [{ type: String }],
     videos: [{ type: String }],
-    helpType: [{ type: String }],
+    helpType: { type: String },
     location: {
       type: {
         type: String,
