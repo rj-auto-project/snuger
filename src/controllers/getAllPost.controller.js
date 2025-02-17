@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 
 export const getPostsByLocation = async (req, reply) => {
   const { lat, long, page = 1, limit = 10 } = req.query;
-  
+
   if (!lat || !long) {
     return reply.status(400).send({
       error: "Latitude and Longitude are required to fetch nearby snugs.",
@@ -24,11 +24,13 @@ export const getPostsByLocation = async (req, reply) => {
         },
       },
       $or: [
-        { groupID: { $exists: false } },  // groupID field doesn't exist
-        { groupID: null }                 // groupID is null
-      ]
+        { groupID: { $exists: false } }, // groupID field doesn't exist
+        { groupID: null }, // groupID is null
+      ],
     })
+      .select("-embedding")
       .populate("userId", "username profileImage")
+      .populate("groupID", "name")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -48,7 +50,6 @@ export const getPostsByLocation = async (req, reply) => {
     });
   }
 };
-
 
 // get post by group
 export const getGroupPosts = async (req, reply) => {
@@ -75,7 +76,9 @@ export const getGroupPosts = async (req, reply) => {
     }
 
     const posts = await Post.find(query)
+      .select("-embedding")
       .populate("userId", "username profileImage")
+      .populate("groupID", "name")
       .sort({ createdAt: -1 })
       .limit(Number(limit))
       .lean();
@@ -94,13 +97,13 @@ export const getGroupPosts = async (req, reply) => {
   }
 };
 
-
 export const getTopPosts = async (req, reply) => {
   const { userId, lat, long, radius = 5000 } = req.query;
 
   if (!userId) {
     return reply.status(400).send({
-      error: "userId is required to fetch posts for user's groups and location.",
+      error:
+        "userId is required to fetch posts for user's groups and location.",
     });
   }
 
@@ -121,16 +124,17 @@ export const getTopPosts = async (req, reply) => {
 
     // Get top 10 upvoted posts from user's groups
     const topGroupPosts = await Post.find({
-      groupID: { 
-        $in: groupIDs.map(id => 
-          mongoose.Types.ObjectId.isValid(id) ? id : null
-        ).filter(id => id !== null)
-      }
+      groupID: {
+        $in: groupIDs
+          .map((id) => (mongoose.Types.ObjectId.isValid(id) ? id : null))
+          .filter((id) => id !== null),
+      },
     })
+      .select("-embedding")
       .sort({ totalUpvotes: -1, createdAt: -1 }) // Sort by total upvotes and then by date
       .limit(10)
       .populate("userId", "username profileImage")
-      .populate("groupID") // Optionally populate group details if needed
+      .populate("groupID", "name")
       .lean();
 
     // Get top 10 upvoted posts near user's location
@@ -139,19 +143,21 @@ export const getTopPosts = async (req, reply) => {
         $near: {
           $geometry: {
             type: "Point",
-            coordinates: [parseFloat(long), parseFloat(lat)]
+            coordinates: [parseFloat(long), parseFloat(lat)],
           },
-          $maxDistance: Number(radius)
-        }
+          $maxDistance: Number(radius),
+        },
       },
       $or: [
-        { groupID: { $exists: false } },  // groupID field doesn't exist
-        { groupID: null }                 // groupID is null
-      ]
+        { groupID: { $exists: false } }, // groupID field doesn't exist
+        { groupID: null }, // groupID is null
+      ],
     })
+      .select("-embedding")
       .sort({ totalUpvotes: -1, createdAt: -1 }) // Sort by total upvotes and then by date
       .limit(10)
       .populate("userId", "username profileImage")
+      .populate("groupID", "name")
       .lean();
 
     reply.send({
