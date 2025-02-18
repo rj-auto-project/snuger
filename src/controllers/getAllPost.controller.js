@@ -24,17 +24,30 @@ export const getPostsByLocation = async (req, reply) => {
         },
       },
       $or: [
-        { groupID: { $exists: false } }, // groupID field doesn't exist
-        { groupID: null }, // groupID is null
+        { groupID: { $exists: false } },
+        { groupID: null },
       ],
     })
       .select("-embedding")
-      .populate("userId", "username profileImage")
+      .populate({
+        path: "userId",
+        select: "username profileImage",
+        model: "User",
+        options: { lean: true }
+      })
       .populate("groupID", "name")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
-      .lean();
+      .lean()
+      .transform(docs => {
+        return docs.map(doc => {
+          const transformed = { ...doc };
+          transformed.user = transformed.userId;
+          delete transformed.userId;
+          return transformed;
+        });
+      });
 
     reply.send({
       success: true,
@@ -77,11 +90,24 @@ export const getGroupPosts = async (req, reply) => {
 
     const posts = await Post.find(query)
       .select("-embedding")
-      .populate("userId", "username profileImage")
+      .populate({
+        path: "userId",
+        select: "username profileImage",
+        model: "User",
+        options: { lean: true }
+      })
       .populate("groupID", "name")
       .sort({ createdAt: -1 })
       .limit(Number(limit))
-      .lean();
+      .lean()
+      .transform(docs => {
+        return docs.map(doc => {
+          const transformed = { ...doc };
+          transformed.user = transformed.userId;
+          delete transformed.userId;
+          return transformed;
+        });
+      });
 
     reply.send({
       success: true,
@@ -131,11 +157,24 @@ export const getTopPosts = async (req, reply) => {
       },
     })
       .select("-embedding")
-      .sort({ totalUpvotes: -1, createdAt: -1 }) // Sort by total upvotes and then by date
-      .limit(10)
-      .populate("userId", "username profileImage")
+      .populate({
+        path: "userId",
+        select: "username profileImage",
+        model: "User",
+        options: { lean: true }
+      })
       .populate("groupID", "name")
-      .lean();
+      .sort({ totalUpvotes: -1, createdAt: -1 })
+      .limit(10)
+      .lean()
+      .transform(docs => {
+        return docs.map(doc => {
+          const transformed = { ...doc };
+          transformed.user = transformed.userId;
+          delete transformed.userId;
+          return transformed;
+        });
+      });
 
     // Get top 10 upvoted posts near user's location
     const topLocationPosts = await Post.find({
@@ -154,11 +193,24 @@ export const getTopPosts = async (req, reply) => {
       ],
     })
       .select("-embedding")
-      .sort({ totalUpvotes: -1, createdAt: -1 }) // Sort by total upvotes and then by date
-      .limit(10)
-      .populate("userId", "username profileImage")
+      .populate({
+        path: "userId",
+        select: "username profileImage",
+        model: "User",
+        options: { lean: true }
+      })
       .populate("groupID", "name")
-      .lean();
+      .sort({ totalUpvotes: -1, createdAt: -1 })
+      .limit(10)
+      .lean()
+      .transform(docs => {
+        return docs.map(doc => {
+          const transformed = { ...doc };
+          transformed.user = transformed.userId;
+          delete transformed.userId;
+          return transformed;
+        });
+      });
 
     reply.send({
       success: true,
