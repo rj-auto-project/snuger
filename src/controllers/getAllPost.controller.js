@@ -31,7 +31,7 @@ export const getPostsByLocation = async (req, reply) => {
       .select("-embedding")
       .populate({
         path: "userId",
-        select: "username profileImage",
+        select: "username profileImage name",
         model: "User",
         options: { lean: true }
       })
@@ -92,7 +92,7 @@ export const getGroupPosts = async (req, reply) => {
       .select("-embedding")
       .populate({
         path: "userId",
-        select: "username profileImage",
+        select: "username profileImage name",
         model: "User",
         options: { lean: true }
       })
@@ -159,7 +159,7 @@ export const getTopPosts = async (req, reply) => {
       .select("-embedding")
       .populate({
         path: "userId",
-        select: "username profileImage",
+        select: "username profileImage name",
         model: "User",
         options: { lean: true }
       })
@@ -195,7 +195,7 @@ export const getTopPosts = async (req, reply) => {
       .select("-embedding")
       .populate({
         path: "userId",
-        select: "username profileImage",
+        select: "username profileImage name",
         model: "User",
         options: { lean: true }
       })
@@ -225,6 +225,3 @@ export const getTopPosts = async (req, reply) => {
     });
   }
 };
-
-
-// updated
