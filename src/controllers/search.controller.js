@@ -193,12 +193,12 @@ export const searchResult = async (req, reply) => {
             from: "users",
             localField: "userId",
             foreignField: "_id",
-            as: "author",
+            as: "user",
           },
         },
         {
           $addFields: {
-            author: { $arrayElemAt: ["$author", 0] },
+            user: { $arrayElemAt: ["$user", 0] },
           },
         },
         {
@@ -222,15 +222,15 @@ export const searchResult = async (req, reply) => {
                 else: null,
               },
             },
-            author: {
+            user: {
               $cond: {
                 if: "$isAnonymous",
                 then: null,
                 else: {
-                  _id: "$author._id",
-                  username: "$author.username",
-                  name: "$author.name",
-                  profileImage: "$author.profileImage",
+                  _id: "$user._id",
+                  username: "$user.username",
+                  name: "$user.name",
+                  profileImage: "$user.profileImage",
                 },
               },
             },
@@ -314,12 +314,12 @@ export const searchResult = async (req, reply) => {
             from: "users",
             localField: "userId",
             foreignField: "_id",
-            as: "author",
+            as: "user",
           },
         },
         {
           $addFields: {
-            author: { $arrayElemAt: ["$author", 0] },
+            user: { $arrayElemAt: ["$user", 0] },
           },
         },
         {
@@ -343,15 +343,15 @@ export const searchResult = async (req, reply) => {
                 else: null,
               },
             },
-            author: {
+            user: {
               $cond: {
                 if: "$isAnonymous",
                 then: null,
                 else: {
-                  _id: "$author._id",
-                  username: "$author.username",
-                  name: "$author.name",
-                  profileImage: "$author.profileImage",
+                  _id: "$user._id",
+                  username: "$user.username",
+                  name: "$user.name",
+                  profileImage: "$user.profileImage",
                 },
               },
             },
