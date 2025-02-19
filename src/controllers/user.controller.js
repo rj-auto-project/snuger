@@ -69,8 +69,10 @@ export const createUser = async (req, reply) => {
         error: "this Username already exists",
       });
     }
+    
     const parsedLocation = location ? JSON.parse(location) : undefined;
     const options = { destination: fileName, gzip: true };
+
     try {
       const bucket = storage.bucket(bucketName);
       const file = bucket.file(fileName);
@@ -113,11 +115,27 @@ export const createUser = async (req, reply) => {
 // get user details
 export const getUserProfile = async (req, reply) => {
   try {
-    const userId = req.params.id;
-    const user = await User.findById(userId).lean();
+    const requesterId = req.user.userId; // Get authenticated user's ID
+    const requestedUserId = req.params.id;
+
+    if (!requesterId) {
+      return reply.status(401).send({ error: "Authentication required" });
+    }
+
+    const user = await User.findById(requestedUserId).lean();
 
     if (!user) {
       return reply.status(404).send({ error: "User not found" });
+    }
+
+    // Optional: Check if the requester has permission to view this profile
+    // For example, if you want to restrict certain fields for non-self requests
+    const isOwnProfile = requesterId.toString() === requestedUserId.toString();
+    
+    // Remove sensitive information if not viewing own profile
+    if (!isOwnProfile) {
+      delete user.phoneNumber;
+      // Add other sensitive fields to remove as needed
     }
 
     reply.send({ success: true, user });

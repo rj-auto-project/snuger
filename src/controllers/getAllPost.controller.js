@@ -222,10 +222,25 @@ export const getGroupPosts = async (req, reply) => {
     }
 
     const posts = await Post.find(query)
-      .populate("userId", "username profileImage")
+      .select("-embedding")
+      .populate({
+        path: "userId",
+        select: "username profileImage name",
+        model: "User",
+        options: { lean: true }
+      })
+      .populate("groupID", "name")
       .sort({ createdAt: -1 })
       .limit(Number(limit))
-      .lean();
+      .lean()
+      .transform(docs => {
+        return docs.map(doc => {
+          const transformed = { ...doc };
+          transformed.user = transformed.userId;
+          delete transformed.userId;
+          return transformed;
+        });
+      });
 
     reply.send({
       success: true,
@@ -246,6 +261,8 @@ export const getTopPosts = async (req, reply) => {
 
   if (!userId) {
     return reply.status(400).send({
+      error:
+        "userId is required to fetch posts for user's groups and location.",
       error:
         "userId is required to fetch posts for user's groups and location.",
     });
@@ -273,12 +290,31 @@ export const getTopPosts = async (req, reply) => {
           .map((id) => (mongoose.Types.ObjectId.isValid(id) ? id : null))
           .filter((id) => id !== null),
       },
+      groupID: {
+        $in: groupIDs
+          .map((id) => (mongoose.Types.ObjectId.isValid(id) ? id : null))
+          .filter((id) => id !== null),
+      },
     })
-      .sort({ totalUpvotes: -1, createdAt: -1 }) // Sort by total upvotes and then by date
+      .select("-embedding")
+      .populate({
+        path: "userId",
+        select: "username profileImage name",
+        model: "User",
+        options: { lean: true }
+      })
+      .populate("groupID", "name")
+      .sort({ totalUpvotes: -1, createdAt: -1 })
       .limit(10)
-      .populate("userId", "username profileImage")
-      .populate("groupID") // Optionally populate group details if needed
-      .lean();
+      .lean()
+      .transform(docs => {
+        return docs.map(doc => {
+          const transformed = { ...doc };
+          transformed.user = transformed.userId;
+          delete transformed.userId;
+          return transformed;
+        });
+      });
 
     // Get top 10 upvoted posts near user's location
     const topLocationPosts = await Post.find({
@@ -287,7 +323,10 @@ export const getTopPosts = async (req, reply) => {
           $geometry: {
             type: "Point",
             coordinates: [parseFloat(long), parseFloat(lat)],
+            coordinates: [parseFloat(long), parseFloat(lat)],
           },
+          $maxDistance: Number(radius),
+        },
           $maxDistance: Number(radius),
         },
       },
@@ -298,8 +337,15 @@ export const getTopPosts = async (req, reply) => {
     })
       .sort({ totalUpvotes: -1, createdAt: -1 }) // Sort by total upvotes and then by date
       .limit(10)
-      .populate("userId", "username profileImage")
-      .lean();
+      .lean()
+      .transform(docs => {
+        return docs.map(doc => {
+          const transformed = { ...doc };
+          transformed.user = transformed.userId;
+          delete transformed.userId;
+          return transformed;
+        });
+      });
 
     reply.send({
       success: true,
@@ -314,3 +360,4 @@ export const getTopPosts = async (req, reply) => {
     });
   }
 };
+
