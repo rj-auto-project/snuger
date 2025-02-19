@@ -4,7 +4,6 @@ import {
   refreshToken,
   verifyFirebaseToken,
 } from "../controllers/auth.controller.js";
-import { authGuard } from "../middleware/auth.js";
 
 export const authRoutes = async (fastify) => {
   // Register multipart plugin
@@ -20,8 +19,5 @@ export const authRoutes = async (fastify) => {
   fastify.post("/signup", createUser);
 
   // Protected routes (require authentication)
-  fastify.post("/refresh-token", {
-    preHandler: authGuard,
-    handler: refreshToken
-  });
+  fastify.post("/refresh-token",refreshToken);
 };
