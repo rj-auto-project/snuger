@@ -327,13 +327,11 @@ export const getTopPosts = async (req, reply) => {
           },
           $maxDistance: Number(radius),
         },
-          $maxDistance: Number(radius),
-        },
       },
       $or: [
-        { groupID: { $exists: false } }, // groupID field doesn't exist
-        { groupID: null }, // groupID is null
-      ],
+        { groupID: { $exists: false } },  // groupID field doesn't exist
+        { groupID: null }                 // groupID is null
+      ]
     })
       .sort({ totalUpvotes: -1, createdAt: -1 }) // Sort by total upvotes and then by date
       .limit(10)
@@ -360,4 +358,3 @@ export const getTopPosts = async (req, reply) => {
     });
   }
 };
-
