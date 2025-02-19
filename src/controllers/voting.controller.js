@@ -1,118 +1,92 @@
+import mongoose from "mongoose";
 import { Post } from "../model/post.model.js";
 import { User } from "../model/user.model.js";
 
-// toggle vote
 export const voteStatus = async (req, reply) => {
-  try {
-    const { userId, postId, voteStatus } = req.body; // Pass the userId in the request body
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-    const validVoteStatuses = ["upvote", "downvote", "None"];
-    if (!validVoteStatuses.includes(voteStatus)) {
+  try {
+    const { postId, voteStatus } = req.body;
+    const userId = req.user.userId;
+    console.log(userId)
+
+    if (!["upvote", "downvote"].includes(voteStatus)) {
       return reply.status(400).send({ message: "Invalid vote status" });
     }
 
-    const post = await Post.findById(postId);
+    if (!userId) {
+      return reply.status(401).send({ message: "Authentication required" });
+    }
+
+    const post = await Post.findById(postId).session(session);
 
     if (!post) {
       return reply.status(404).send({ message: "Post not found" });
     }
 
-    if (!userId) {
-      return reply.status(400).send({ message: "User ID is required" });
-    }
+    let snugScoreChange = 0;
+    let updateQuery = {};
 
-    // Initialize changes
-    const updateFields = {};
-    let snugScoreChange = 0; // Variable to track the change in snugScore
+    const isUpvoted = post.upvotes.includes(userId);
+    const isDownvoted = post.downvotes.includes(userId);
 
-    // Handle upvote
     if (voteStatus === "upvote") {
-      if (post.upvotes.includes(userId)) {
-        // If user already upvoted, remove the upvote
-        post.upvotes = post.upvotes.filter((id) => id.toString() !== userId);
-        post.totalUpvotes--;
-        updateFields.voteStatus = "None";
-        snugScoreChange -= 1; // Decrement snugScore since vote is removed
+      if (isUpvoted) {
+        updateQuery = { 
+          $pull: { upvotes: userId }, 
+          voteStatus: "None" 
+        };
+        snugScoreChange -= 1;
       } else {
-        // Add user to upvotes
-        post.upvotes.push(userId);
-        post.totalUpvotes++;
-        snugScoreChange += 1; // Increment snugScore since user upvoted
-
-        // Remove from downvotes if present
-        if (post.downvotes.includes(userId)) {
-          post.downvotes = post.downvotes.filter((id) => id.toString() !== userId);
-          post.totalDownvotes--;
-          snugScoreChange += 1; // Increment snugScore for removing a downvote
-        }
-
-        updateFields.voteStatus = "upvote";
+        updateQuery = {
+          $addToSet: { upvotes: userId },
+          $pull: { downvotes: userId },
+          voteStatus: "upvote"
+        };
+        snugScoreChange += isDownvoted ? 2 : 1;
       }
     }
 
-    // Handle downvote
     if (voteStatus === "downvote") {
-      if (post.downvotes.includes(userId)) {
-        // If user already downvoted, remove the downvote
-        post.downvotes = post.downvotes.filter((id) => id.toString() !== userId);
-        post.totalDownvotes--;
-        updateFields.voteStatus = "None";
-        snugScoreChange += 1; // Increment snugScore since downvote is removed
+      if (isDownvoted) {
+        updateQuery = { 
+          $pull: { downvotes: userId }, 
+          voteStatus: "None" 
+        };
+        snugScoreChange += 1;
       } else {
-        // Add user to downvotes
-        post.downvotes.push(userId);
-        post.totalDownvotes++;
-        snugScoreChange -= 1; // Decrement snugScore since user downvoted
-
-        // Remove from upvotes if present
-        if (post.upvotes.includes(userId)) {
-          post.upvotes = post.upvotes.filter((id) => id.toString() !== userId);
-          post.totalUpvotes--;
-          snugScoreChange -= 1; // Decrement snugScore for removing an upvote
-        }
-
-        updateFields.voteStatus = "downvote";
+        updateQuery = {
+          $addToSet: { downvotes: userId },
+          $pull: { upvotes: userId },
+          voteStatus: "downvote"
+        };
+        snugScoreChange -= isUpvoted ? 2 : 1;
       }
     }
-
-    // Handle removing vote
-    if (voteStatus === "None") {
-      if (post.upvotes.includes(userId)) {
-        post.upvotes = post.upvotes.filter((id) => id.toString() !== userId);
-        post.totalUpvotes--;
-        snugScoreChange -= 1; // Decrement snugScore since upvote is removed
-      }
-      if (post.downvotes.includes(userId)) {
-        post.downvotes = post.downvotes.filter((id) => id.toString() !== userId);
-        post.totalDownvotes--;
-        snugScoreChange += 1; // Increment snugScore since downvote is removed
-      }
-      updateFields.voteStatus = "None";
-    }
-
-    // Calculate totalVotes
-    post.totalVotes = post.totalUpvotes - post.totalDownvotes;
-
-    // Save the post
-    await post.save();
-
-    // Update snugScore in the user table
+    const updatedPost = await Post.findByIdAndUpdate(postId, updateQuery, { session, new: true });
+    const recalculatedTotalUpvotes = updatedPost.upvotes.length;
+    const recalculatedTotalDownvotes = updatedPost.downvotes.length;
+    const recalculatedTotalVotes = recalculatedTotalUpvotes - recalculatedTotalDownvotes;
+    await Post.findByIdAndUpdate(postId, { 
+      $set: { 
+        totalUpvotes: recalculatedTotalUpvotes, 
+        totalDownvotes: recalculatedTotalDownvotes, 
+        totalVotes: recalculatedTotalVotes 
+      } 
+    }, { session });
     if (snugScoreChange !== 0) {
-      await User.findByIdAndUpdate(post.userId, {
-        $inc: { snugScore: snugScoreChange },
-      });
+      await User.findByIdAndUpdate(post.userId, { $inc: { snugScore: snugScoreChange } }, { session });
     }
 
-    reply.status(200).send({
-      message: `Vote status updated to ${voteStatus} successfully`,
-      totalVotes: post.totalVotes,
-      totalUpvotes: post.totalUpvotes,
-      totalDownvotes: post.totalDownvotes,
-      voteStatus: updateFields.voteStatus,
-      upvotes: post.upvotes,
-      downvotes: post.downvotes,
-    });
+    await session.commitTransaction();
+    session.endSession();
+
+    reply.status(200).send({ message: `Vote status updated to ${voteStatus} successfully`, updatedPost });
+
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     reply.status(500).send({ message: "Error updating vote status", error: error.message });
   }
 };

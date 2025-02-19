@@ -66,8 +66,7 @@ const postSchema = new mongoose.Schema(
     },
     isAnonymous: { type: Boolean, default: false },
     trendingPosition: { type: Number, default: 0 },
-    groupID: { type: mongoose.Schema.Types.ObjectId, ref: "Group" },
-    // Add poll field to post schema
+    groupID: { type: mongoose.Schema.Types.ObjectId, ref: "Group" , default: null},
     poll: { 
       type: pollSchema,
       default: null
@@ -79,6 +78,7 @@ const postSchema = new mongoose.Schema(
         required: true,
         default: "Point",
       },
+      // always put longitude at 0th and latitude at 1st position
       coordinates: {
         type: [Number],
         required: true,

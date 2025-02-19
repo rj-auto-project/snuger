@@ -1,9 +1,8 @@
 import { Post } from "../model/post.model.js";
 import { User } from "../model/user.model.js";
+import mongoose from "mongoose";
 
-// get post by location
 export const getPostsByLocation = async (req, reply) => {
-  console.log("test");
   const { lat, long, page = 1, limit = 10 } = req.query;
 
   if (!lat || !long) {
@@ -14,28 +13,41 @@ export const getPostsByLocation = async (req, reply) => {
 
   try {
     const radiusInMeters = 5000;
-
     const posts = await Post.find({
       location: {
         $near: {
           $geometry: {
             type: "Point",
-            coordinates: [long, lat],
+            coordinates: [parseFloat(long), parseFloat(lat)],
           },
           $maxDistance: radiusInMeters,
         },
       },
       $or: [
-        { groupID: { $exists: false } },  // groupID field doesn't exist
-        { groupID: "null" },                // groupID is null
-        { groupID: "" }                   // groupID is empty string
-      ]
+        { groupID: { $exists: false } },
+        { groupID: null },
+      ],
     })
-    .populate("userId", "username profileImage")
-    .sort({ createdAt: -1 })
-    .skip((page - 1) * limit)
-    .limit(limit)
-    .lean();
+      .select("-embedding")
+      .populate({
+        path: "userId",
+        select: "username profileImage name",
+        model: "User",
+        options: { lean: true }
+      })
+      .populate("groupID", "name")
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean()
+      .transform(docs => {
+        return docs.map(doc => {
+          const transformed = { ...doc };
+          transformed.user = transformed.userId;
+          delete transformed.userId;
+          return transformed;
+        });
+      });
 
     reply.send({
       success: true,
@@ -44,13 +56,13 @@ export const getPostsByLocation = async (req, reply) => {
       limit: Number(limit),
     });
   } catch (error) {
+    console.error("Error fetching posts:", error);
     reply.status(500).send({
       error: "Failed to fetch posts",
       details: error.message,
     });
   }
 };
-
 
 // get post by group
 export const getGroupPosts = async (req, reply) => {
@@ -77,10 +89,25 @@ export const getGroupPosts = async (req, reply) => {
     }
 
     const posts = await Post.find(query)
-      .populate("userId", "username profileImage")
+      .select("-embedding")
+      .populate({
+        path: "userId",
+        select: "username profileImage name",
+        model: "User",
+        options: { lean: true }
+      })
+      .populate("groupID", "name")
       .sort({ createdAt: -1 })
       .limit(Number(limit))
-      .lean();
+      .lean()
+      .transform(docs => {
+        return docs.map(doc => {
+          const transformed = { ...doc };
+          transformed.user = transformed.userId;
+          delete transformed.userId;
+          return transformed;
+        });
+      });
 
     reply.send({
       success: true,
@@ -96,7 +123,6 @@ export const getGroupPosts = async (req, reply) => {
   }
 };
 
-// get top posts in user's group and user's location
 export const getTopPosts = async (req, reply) => {
   const { userId, lat, long, radius = 5000 } = req.query;
 
@@ -120,39 +146,71 @@ export const getTopPosts = async (req, reply) => {
       return reply.status(404).send({ error: "User not found." });
     }
 
-    const groupIDs = user.groupIDs;
-    console.log(groupIDs)
+    const groupIDs = user.groupIDs || [];
 
     // Get top 10 upvoted posts from user's groups
-    const topGroupPosts = await Post.find({ groupID: { $in: groupIDs } })
-      .sort({ upvotes: -1 })
+    const topGroupPosts = await Post.find({
+      groupID: {
+        $in: groupIDs
+          .map((id) => (mongoose.Types.ObjectId.isValid(id) ? id : null))
+          .filter((id) => id !== null),
+      },
+    })
+      .select("-embedding")
+      .populate({
+        path: "userId",
+        select: "username profileImage name",
+        model: "User",
+        options: { lean: true }
+      })
+      .populate("groupID", "name")
+      .sort({ totalUpvotes: -1, createdAt: -1 })
       .limit(10)
-      .populate("userId", "username profileImage")
-      .lean();
-
-    const userLocation = {
-      type: "Point",
-      coordinates: [long, lat],
-    };
+      .lean()
+      .transform(docs => {
+        return docs.map(doc => {
+          const transformed = { ...doc };
+          transformed.user = transformed.userId;
+          delete transformed.userId;
+          return transformed;
+        });
+      });
 
     // Get top 10 upvoted posts near user's location
     const topLocationPosts = await Post.find({
       location: {
         $near: {
-          $geometry: userLocation,
+          $geometry: {
+            type: "Point",
+            coordinates: [parseFloat(long), parseFloat(lat)],
+          },
           $maxDistance: Number(radius),
         },
       },
       $or: [
-        { groupID: { $exists: false } },  // groupID field doesn't exist
-        { groupID: "null" },                // groupID is null
-        { groupID: "" }                   // groupID is empty string
-      ]
+        { groupID: { $exists: false } }, // groupID field doesn't exist
+        { groupID: null }, // groupID is null
+      ],
     })
-      .sort({ upvotes: -1 })
+      .select("-embedding")
+      .populate({
+        path: "userId",
+        select: "username profileImage name",
+        model: "User",
+        options: { lean: true }
+      })
+      .populate("groupID", "name")
+      .sort({ totalUpvotes: -1, createdAt: -1 })
       .limit(10)
-      .populate("userId", "username profileImage")
-      .lean();
+      .lean()
+      .transform(docs => {
+        return docs.map(doc => {
+          const transformed = { ...doc };
+          transformed.user = transformed.userId;
+          delete transformed.userId;
+          return transformed;
+        });
+      });
 
     reply.send({
       success: true,
@@ -160,6 +218,7 @@ export const getTopPosts = async (req, reply) => {
       topLocationPosts,
     });
   } catch (error) {
+    console.error("Error fetching top posts:", error);
     reply.status(500).send({
       error: "Failed to fetch posts",
       details: error.message,
