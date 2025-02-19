@@ -1,7 +1,9 @@
-import { verifyToken } from "../utils/jwt.js";
+const jwt = require('jsonwebtoken');
 
+module.exports = function(req, res, next) {
+  const token = req.header('Authorization');
+  if (!token) return res.status(401).json({ message: 'Access Denied' });
 
-export const authGuard = async (request, reply) => {
   try {
     const authHeader = request.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
@@ -13,6 +15,6 @@ export const authGuard = async (request, reply) => {
     request.user = decoded;
     console.log(decoded)
   } catch (error) {
-    reply.code(401).send({ error: 'Unauthorized' });
+    res.status(400).json({ message: 'Invalid Token' });
   }
 };

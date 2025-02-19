@@ -1,6 +1,6 @@
 import { commentRoutes } from "./comment.routes.js";
 import { postRoutes } from "./post.routes.js";
-import { searchRoutes } from "./search.routes.js";
+import { searchRoutes } from "./search.route.js";
 import { userRoutes } from "./user.routes.js";
 import { votingRoutes } from "./vote.routes.js";
 import { groupRoutes } from "./group.routes.js";
@@ -10,11 +10,9 @@ import { activeStatusRoutes } from "./lastActive.routes.js";
 import { userCountRoutes } from "./userCount.routes.js";
 import { chatRoutes } from "./chat.routes.js";
 import { authRoutes } from "./auth.routes.js";
-import { getTopSnugerRoutes } from "./topSuger.routes.js";
-
+import { heatmapRoutes } from "./heatmap.routes.js";
 
 export const registerRoutes = async (fastify) => {
-  fastify.register(authRoutes, { prefix: "/api/auth" });
   fastify.register(userRoutes, { prefix: "/api/users" });
   fastify.register(postRoutes, { prefix: "/api/posts" });
   fastify.register(commentRoutes, { prefix: "/api/comments" });
@@ -24,7 +22,7 @@ export const registerRoutes = async (fastify) => {
   fastify.register(reportRoutes, { prefix: "/api/report" });
   fastify.register(helpRoutes, { prefix: "/api/help" });
   fastify.register(activeStatusRoutes, { prefix: "/api/activeStatus" });
-  fastify.register(userCountRoutes, {prefix: "/api/userCount"});
-  fastify.register(getTopSnugerRoutes, {prefix: "/api/topSnuger"})
+  fastify.register(userCountRoutes, { prefix: "/api/userCount" });
   fastify.register(chatRoutes, { prefix: "/api/chats" });
+  fastify.register(heatmapRoutes, { prefix: "/api/heatmap" });
 };

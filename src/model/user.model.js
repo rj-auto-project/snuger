@@ -14,6 +14,7 @@ const userSchema = new mongoose.Schema(
       ref: 'Group'
     }],
     isActive: { type: String },
+
     location: {
       type: {
         type: String,
@@ -33,7 +34,6 @@ const userSchema = new mongoose.Schema(
         default: [87.2620756305604, 24.285815044316077],
       },
     },
-    chats: [{ type: mongoose.Schema.Types.ObjectId, ref: "Chat" }],
   },
   { timestamps: true }
 );

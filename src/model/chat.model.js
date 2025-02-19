@@ -1,15 +1,63 @@
 import mongoose from 'mongoose';
 
-const chatSchema = new mongoose.Schema({
-  participants: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    validate: [val => val.length === 2, 'Need exactly 2 participants']
-  }],
-  lastMessage: { type: mongoose.Schema.Types.ObjectId, ref: 'Message' },
-  unreadCount: { type: Map, of: Number, default: {} }
-}, { timestamps: true });
+const ChatSchema = new mongoose.Schema({
+  participants: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+  ],
+  messages: [
+    {
+      sender: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+      },
+      content: {
+        type: String,
+        required: true,
+      },
+      type: {
+        type: String,
+        enum: ['text', 'image', 'video', 'file'],
+        default: 'text',
+      },
+      timestamp: {
+        type: Date,
+        default: Date.now,
+      },
+      readBy: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+      ],
+    },
+  ],
+  isGroupChat: {
+    type: Boolean,
+    default: false,
+  },
+  groupName: {
+    type: String,
+    required: function () {
+      return this.isGroupChat;
+    },
+  },
+  groupAvatar: {
+    type: String,
+  },
+  lastUpdated: {
+    type: Date,
+    default: Date.now,
+  },
+});
 
-chatSchema.index({ participants: 1, updatedAt: -1 });
+ChatSchema.pre('save', function (next) {
+  this.lastUpdated = new Date();
+  next();
+});
 
-export const Chat = mongoose.model('Chat', chatSchema);
+export const Chat = mongoose.model('Chat', ChatSchema);
