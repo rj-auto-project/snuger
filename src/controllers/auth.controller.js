@@ -35,6 +35,9 @@ export async function verifyFirebaseToken(request, reply) {
 }
 
 export async function createUser(request, reply) {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const signUpToken = request.headers.authorization?.replace("Bearer ", "");
 
@@ -43,13 +46,16 @@ export async function createUser(request, reply) {
     }
 
     const { phoneNumber } = verifySignUpToken(signUpToken);
-    const existingUser = await User.findOne({ phoneNumber });
+
+    const existingUser = await User.findOne({ phoneNumber }).session(session);
     if (existingUser) {
+      await session.abortTransaction();
+      session.endSession();
       return reply.code(409).send({ error: "User already exists" });
     }
 
     const parts = request.parts();
-    let name, username, profileImage, fileBuffer, fileName;
+    let name, username, profileImage, fileBuffer, fileName, location, fcmToken;
 
     for await (const part of parts) {
       if (part.file) {
@@ -63,16 +69,26 @@ export async function createUser(request, reply) {
           case "username":
             username = part.value;
             break;
+          case "location":
+            location = part.value;
+            break;
+          case "fcmToken":
+            fcmToken = part.value;
+            break;
         }
       }
     }
 
     if (!name || !username) {
+      await session.abortTransaction();
+      session.endSession();
       return reply.code(400).send({ error: "Name and username are required" });
     }
 
-    const existingUsername = await User.findOne({ username });
+    const existingUsername = await User.findOne({ username }).session(session);
     if (existingUsername) {
+      await session.abortTransaction();
+      session.endSession();
       return reply.code(409).send({ error: "Username already exists" });
     }
 
@@ -80,20 +96,42 @@ export async function createUser(request, reply) {
       profileImage = await uploadFileToGCS(fileBuffer, fileName, "snuger");
     }
 
-    const newUser = await User.create({
-      phoneNumber,
-      name,
-      username,
-      profileImage,
-    });
+    if (location) {
+      try {
+        const parsedLocation = JSON.parse(location);
+        if (
+          !Array.isArray(parsedLocation) ||
+          parsedLocation.length !== 2 ||
+          isNaN(parsedLocation[0]) ||
+          isNaN(parsedLocation[1])
+        ) {
+          throw new Error(
+            "Invalid location format. Expected [longitude, latitude]."
+          );
+        }
+        location = { type: "Point", coordinates: parsedLocation };
+      } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+        return reply.code(400).send({
+          error: "Invalid location format",
+          details: error.message,
+        });
+      }
+    }
+    const newUser = await User.create(
+      [{ phoneNumber, name, username, profileImage, fcmToken, location }],
+      { session }
+    );
 
-    const { accessToken, refreshToken } = generateTokens(newUser._id);
-    return reply.send({
-      accessToken,
-      refreshToken,
-      user: newUser,
-    });
+    await session.commitTransaction();
+    session.endSession();
+
+    const { accessToken, refreshToken } = generateTokens(newUser[0]._id);
+    return reply.send({ accessToken, refreshToken, user: newUser[0] });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     console.error("User creation error:", error);
     return reply
       .code(500)
