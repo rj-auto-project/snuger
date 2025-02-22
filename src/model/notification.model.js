@@ -9,7 +9,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ["upvote", "downvote", "reach", "comment"],
+    enum: ["upvote", "downvote", "reach", "comment", "proxy_request"],
     required: true,
   },
   sourceId: {
@@ -20,12 +20,16 @@ const notificationSchema = new mongoose.Schema({
   onModel: {
     type: String,
     required: true,
-    enum: ["Post",],
+    enum: ["Post", "ProxyRequest"],
   },
   actorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
+  },
+  additionalCount: {
+    type: Number,
+    default: 0,
   },
   read: {
     type: Boolean,

@@ -9,10 +9,7 @@ export const voteStatus = async (req, reply) => {
   session.startTransaction();
 
   try {
-    const { postId, voteStatus } = req.body;
-    const userId = req.user.userId;
-    console.log(userId)
-
+    const { postId, voteStatus, userId } = req.body;
     if (!["upvote", "downvote", "remove"].includes(voteStatus)) {
       return reply.status(400).send({ message: "Invalid vote status" });
     }

@@ -1,33 +1,41 @@
+import mongoose from "mongoose";
 import { messaging } from "../config/firebase.js";
 import Notification from "../model/notification.model.js";
 import { User } from "../model/user.model.js";
 
-export async function formatNotification(notification, actor) {
+function formatNotification(notification, actor) {
   const templates = {
-    upvote: {
-      title: "New Like",
-      body: `${actor.username} liked your post`,
-    },
-    comment: {
-      title: "New Comment",
-      body: `${actor.username} commented on your post`,
-    },
+    upvote: () => ({
+      title: "New Votes",
+      body: notification.additionalCount > 0
+      ? `${actor.username} and ${notification.additionalCount} others upvote on your Snug`
+      : `${actor.username} upvote on your Snug`
+    }),
+    comment: () => ({
+      title: "New Discussion",
+      body: notification.additionalCount > 0
+        ? `${actor.username} and ${notification.additionalCount} others are discussing on your Snug`
+        : `${actor.username} is discussing on your Snug`,
+    }),
+    proxy_request: () => ({
+      title: "Proxy Request",
+      body: `${actor.username} is asking to create a proxy`,
+    }),
   };
 
-  return templates[notification.type];
+  return templates[notification.type]();
 }
 
+// Notification Service
 export async function sendPushNotification(notification) {
   try {
     const user = await User.findById(notification.userId);
     const actor = await User.findById(notification.actorId);
 
-    console.log("user to sent ", user);
-
     if (!user?.fcmToken) return;
 
-    const notificationData = await formatNotification(notification, actor);
-
+    const notificationData = formatNotification(notification, actor);
+    
     const message = {
       token: user.fcmToken,
       notification: {
@@ -39,27 +47,13 @@ export async function sendPushNotification(notification) {
         sourceId: notification.sourceId.toString(),
         notificationId: notification._id.toString(),
       },
-      android: {
-        priority: "high",
-        notification: {
-          channelId: "default",
-          clickAction: "REACT_NATIVE_ClICK_ACTION",
-        },
-      },
-      apns: {
-        payload: {
-          aps: {
-            sound: "default",
-            badge: 1,
-          },
-        },
-      },
+      android: { priority: "high" },
+      apns: { payload: { aps: { sound: "default" } } },
     };
 
     await messaging.send(message);
   } catch (error) {
-    console.error("Error sending push notification:", error);
-    // Log to monitoring service but don't throw
+    console.error("Push notification error:", error);
   }
 }
 
@@ -70,50 +64,61 @@ export async function createNotification({
   onModel,
   actorId,
 }) {
+  const session = await mongoose.startSession();
   try {
-    const existingNotification = await Notification.findOneAndUpdate(
-      { userId, type, sourceId, onModel, actorId },
-      { $set: { updatedAt: new Date() } },
-      { new: true }
+    session.startTransaction();
+    
+    const existing = await Notification.findOneAndUpdate(
+      { userId, type, sourceId, onModel },
+      { $inc: { additionalCount: 1 }, $set: { updatedAt: new Date() } },
+      { new: true, session }
     );
-    if (existingNotification) {
-      console.log(
-        "Notification already exists, sending push notification only"
-      );
-      await sendPushNotification(existingNotification);
-      return existingNotification;
+
+    if (existing) {
+      await sendPushNotification(existing);
+      await session.commitTransaction();
+      return existing;
     }
 
-    const notification = await Notification.create({
+    const newNotification = await Notification.create([{
       userId,
       type,
       sourceId,
       onModel,
       actorId,
-    });
-    console.log("Creating notification:", notification);
-    await sendPushNotification(notification);
-    return notification;
+      additionalCount: 0,
+    }], { session });
+
+    await sendPushNotification(newNotification[0]);
+    await session.commitTransaction();
+    return newNotification[0];
   } catch (error) {
-    console.error("Error creating notification:", error);
+    await session.abortTransaction();
+    console.error("Notification creation failed:", error);
     throw error;
+  } finally {
+    session.endSession();
   }
 }
 
+// Controller Methods
 export const markAsRead = async (req, reply) => {
   try {
     const { notificationId, userId } = req.body;
-
-    const notification = await Notification.findOneAndUpdate(
+    
+    const updated = await Notification.findOneAndUpdate(
       { _id: notificationId, userId },
-      { read: true },
+      { $set: { read: true } },
       { new: true }
-    );
+    ).populate("actorId", "username avatar");
 
-    reply.send(notification);
+    reply.send({
+      ...updated.toObject(),
+      actions: updated.type === 'proxy_request' ? ['Create', 'Decline'] : [],
+      message: formatNotification(updated, updated.actorId)
+    });
   } catch (error) {
-    console.error("Error marking notification as read:", error);
-    reply.code(500).send({ error: "Internal Server Error" });
+    reply.code(500).send({ error: "Update failed" });
   }
 };
 
@@ -127,11 +132,20 @@ export const getUserNotifications = async (req, reply) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate("actorId", "username avatar");
+      .populate("actorId", "username avatar")
+      .lean();
 
-    reply.send(notifications);
+    const formatted = notifications.map(n => ({
+      ...n,
+      actions: n.type === 'proxy_request' ? ['Create', 'Decline'] : [],
+      message: formatNotification(n, n.actorId),
+      timestamp: new Date(n.createdAt).toISOString(),
+    }));
+
+    reply.send(formatted);
   } catch (error) {
-    console.error("Error fetching notifications:", error);
-    reply.code(500).send({ error: "Internal Server Error" });
+    reply.code(500).send({ error: "Fetch failed" });
   }
 };
+
+export default Notification;
