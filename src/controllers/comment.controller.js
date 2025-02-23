@@ -27,7 +27,9 @@ export const createComment = async (req, reply) => {
       { $inc: { totalComment: 1 } },
       { session }
     );
-    if (userId.toString() === post.userId.toString()) {
+    if (userId.toString() !== post.userId.toString()) {
+
+    
       await createNotification({
         userId: post.userId,
         type: "comment",
