@@ -132,7 +132,7 @@ export const getUserNotifications = async (req, reply) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .populate("actorId", "username avatar")
+      .populate("actorId", "username profileImage")
       .lean();
 
     const formatted = notifications.map(n => ({
