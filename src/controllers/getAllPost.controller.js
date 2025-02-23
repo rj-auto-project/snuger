@@ -259,42 +259,70 @@ export const getGroupPosts = async (req, reply) => {
 export const getTopPosts = async (req, reply) => {
   const { userId, lat, long, radius = 5000 } = req.query;
 
-  if (!userId) {
-    return reply.status(400).send({
-      error:
-        "userId is required to fetch posts for user's groups and location.",
-      error:
-        "userId is required to fetch posts for user's groups and location.",
-    });
-  }
-
   if (!lat || !long) {
     return reply.status(400).send({
-      error: "lat and long are required to fetch posts near user's location.",
+      error: "lat and long are required to fetch posts near location.",
     });
   }
 
   try {
-    // Fetch user's groups
-    const user = await User.findById(userId).lean();
-    if (!user) {
-      return reply.status(404).send({ error: "User not found." });
+    let response = { success: true };
+
+    // If userId is provided, get posts from user's groups
+    if (userId) {
+      const user = await User.findById(userId).lean();
+      if (!user) {
+        return reply.status(404).send({ error: "User not found." });
+      }
+
+      const groupIDs = user.groupIDs || [];
+
+      // Get top 10 upvoted posts from user's groups
+      const topGroupPosts = await Post.find({
+        groupID: {
+          $in: groupIDs
+            .map((id) => (mongoose.Types.ObjectId.isValid(id) ? id : null))
+            .filter((id) => id !== null),
+        },
+      })
+        .select("-embedding")
+        .populate({
+          path: "userId",
+          select: "username profileImage name",
+          model: "User",
+          options: { lean: true }
+        })
+        .populate("groupID", "name")
+        .sort({ totalUpvotes: -1, createdAt: -1 })
+        .limit(10)
+        .lean()
+        .transform(docs => {
+          return docs.map(doc => {
+            const transformed = { ...doc };
+            transformed.user = transformed.userId;
+            delete transformed.userId;
+            return transformed;
+          });
+        });
+
+      response.topGroupPosts = topGroupPosts;
     }
 
-    const groupIDs = user.groupIDs || [];
-
-    // Get top 10 upvoted posts from user's groups
-    const topGroupPosts = await Post.find({
-      groupID: {
-        $in: groupIDs
-          .map((id) => (mongoose.Types.ObjectId.isValid(id) ? id : null))
-          .filter((id) => id !== null),
+    // Always get top posts near location
+    const topLocationPosts = await Post.find({
+      location: {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [parseFloat(long), parseFloat(lat)],
+          },
+          $maxDistance: Number(radius),
+        },
       },
-      groupID: {
-        $in: groupIDs
-          .map((id) => (mongoose.Types.ObjectId.isValid(id) ? id : null))
-          .filter((id) => id !== null),
-      },
+      $or: [
+        { groupID: { $exists: false } },
+        { groupID: null }
+      ]
     })
       .select("-embedding")
       .populate({
@@ -303,7 +331,6 @@ export const getTopPosts = async (req, reply) => {
         model: "User",
         options: { lean: true }
       })
-      .populate("groupID", "name")
       .sort({ totalUpvotes: -1, createdAt: -1 })
       .limit(10)
       .lean()
@@ -316,40 +343,9 @@ export const getTopPosts = async (req, reply) => {
         });
       });
 
-    // Get top 10 upvoted posts near user's location
-    const topLocationPosts = await Post.find({
-      location: {
-        $near: {
-          $geometry: {
-            type: "Point",
-            coordinates: [parseFloat(long), parseFloat(lat)],
-            coordinates: [parseFloat(long), parseFloat(lat)],
-          },
-          $maxDistance: Number(radius),
-        },
-      },
-      $or: [
-        { groupID: { $exists: false } },  // groupID field doesn't exist
-        { groupID: null }                 // groupID is null
-      ]
-    })
-      .sort({ totalUpvotes: -1, createdAt: -1 }) // Sort by total upvotes and then by date
-      .limit(10)
-      .lean()
-      .transform(docs => {
-        return docs.map(doc => {
-          const transformed = { ...doc };
-          transformed.user = transformed.userId;
-          delete transformed.userId;
-          return transformed;
-        });
-      });
+    response.topLocationPosts = topLocationPosts;
 
-    reply.send({
-      success: true,
-      topGroupPosts,
-      topLocationPosts,
-    });
+    reply.send(response);
   } catch (error) {
     console.error("Error fetching top posts:", error);
     reply.status(500).send({
