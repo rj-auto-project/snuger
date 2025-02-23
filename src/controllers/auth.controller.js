@@ -7,6 +7,7 @@ import {
   verifySignUpToken,
 } from "../utils/jwt.js";
 import { auth } from "../config/firebase.js";
+import mongoose from "mongoose";
 
 export async function verifyFirebaseToken(request, reply) {
   try {
@@ -78,6 +79,9 @@ export async function createUser(request, reply) {
         }
       }
     }
+
+
+
 
     if (!name || !username) {
       await session.abortTransaction();
