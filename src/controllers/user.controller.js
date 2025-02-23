@@ -220,7 +220,7 @@ export const updateUser = async (req, reply) => {
         const bucket = storage.bucket("your-bucket-name");
         const file = bucket.file(fileName);
         await file.save(fileBuffer, { gzip: true });
-        updateFields.profileImage = `https://storage.googleapis.com/your-bucket-name/${fileName}`;
+        updateFields.profileImage = `https://storage.googleapis.com/${bucketName}/${fileName}`;
       } catch (error) {
         await session.abortTransaction();
         session.endSession();
