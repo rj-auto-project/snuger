@@ -217,7 +217,7 @@ export const updateUser = async (req, reply) => {
     // Handle media upload
     if (fileBuffer) {
       try {
-        const bucket = storage.bucket("your-bucket-name");
+        const bucket = storage.bucket(bucketName);
         const file = bucket.file(fileName);
         await file.save(fileBuffer, { gzip: true });
         updateFields.profileImage = `https://storage.googleapis.com/${bucketName}/${fileName}`;
