@@ -1,4 +1,5 @@
-/* abstract */ class MessageStore {
+import { Message } from '../model/message.model.js';
+class MessageStore {
   saveMessage(message) {}
   findMessagesForUser(userID) {}
 }
@@ -48,9 +49,35 @@ class RedisMessageStore extends MessageStore {
   }
 }
 
-// Change default export to named exports
+class MongoMessageStore extends MessageStore {
+  async saveMessage(message) {
+    const newMessage = new Message({
+      sender: message.from,
+      chat: message.to, // Assuming 'to' field contains chat ID
+      content: message.content,
+      type: message.type || 'text',
+      status: 'sent'
+    });
+    return await newMessage.save();
+  }
+
+  async findMessagesForUser(userID) {
+    return await Message.find({
+      $or: [
+        { sender: userID },
+        { chat: userID }
+      ]
+    })
+    .sort({ createdAt: -1 })
+    .populate('sender')
+    .populate('chat');
+  }
+}
+
 export {
   MessageStore,
   InMemoryMessageStore,
-  RedisMessageStore
+  RedisMessageStore,
+  MongoMessageStore,
+  Message
 };

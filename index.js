@@ -37,7 +37,7 @@ app.get("/", async (request, reply) => {
 
 // Redis client
 const redisClient = new Redis({
-  host: 'localhost',
+  host: ' 10.113.121.147',
   port: 6379,
   maxRetriesPerRequest: 3,
   retryStrategy(times) {
@@ -118,7 +118,6 @@ app.ready(err => {
   });
 
   app.io.on('connection', async (socket) => {
-    console.log("test")
     // persist session
     sessionStore.saveSession(socket.sessionID, {
       userID: socket.userID,
