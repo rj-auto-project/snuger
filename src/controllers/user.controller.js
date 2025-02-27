@@ -256,7 +256,7 @@ export const updateUser = async (req, reply) => {
               parsedLocation.length !== 2 || 
               isNaN(parsedLocation[0]) || 
               isNaN(parsedLocation[1])) {
-            throw new Error("Invalid location format. Expected [longitude, latitude].");
+            throw new Error("Invalid location format. Expected [longitude, latitude]. ");
           }
           updateFields.location = { type: "Point", coordinates: parsedLocation };
         } catch (error) {
