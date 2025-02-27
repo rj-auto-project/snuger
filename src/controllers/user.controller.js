@@ -148,123 +148,166 @@ export const getUserProfile = async (req, reply) => {
   }
 };
 
-// Update user data individually
+
 export const updateUser = async (req, reply) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-  try {
-    const parts = req.parts();
-    let userId, name, username, phoneNumber, fileBuffer, fileName, location, fcmToken;
-
-    for await (const part of parts) {
-      if (part.file) {
-        fileBuffer = await part.toBuffer();
-        fileName = part.filename;
-      } else {
-        switch (part.fieldname) {
-          case "userId":
-            userId = part.value;
-            break;
-          case "name":
-            name = part.value;
-            break;
-          case "username":
-            username = part.value;
-            break;
-          case "phoneNumber":
-            phoneNumber = part.value;
-            break;
-          case "location":
-            location = part.value;
-            break;
-          case "fcmToken":
-            fcmToken = part.value;
-            break;
-        }
-      }
-    }
-
-    if (!userId) {
-      await session.abortTransaction();
-      session.endSession();
-      return reply.code(400).send({ error: "User ID is required" });
-    }
-
-    let updateFields = {};
+  let retries = 3; // Number of retries for write conflicts
+  let success = false;
+  
+  while (retries > 0 && !success) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     
-    // Handle username uniqueness
-    if (username) {
-      const existingUsername = await User.findOne({ username, _id: { $ne: userId } }).session(session);
-      if (existingUsername) {
-        await session.abortTransaction();
-        session.endSession();
-        return reply.code(409).send({ error: "Username already exists" });
-      }
-      updateFields.username = username;
-    }
-
-    // Handle phoneNumber uniqueness
-    if (phoneNumber) {
-      const existingPhoneNumber = await User.findOne({ phoneNumber, _id: { $ne: userId } }).session(session);
-      if (existingPhoneNumber) {
-        await session.abortTransaction();
-        session.endSession();
-        return reply.code(409).send({ error: "User with this Phone Number already exists" });
-      }
-      updateFields.phoneNumber = phoneNumber;
-    }
-
-    // Handle media upload
-    if (fileBuffer) {
-      try {
-        const bucket = storage.bucket(bucketName);
-        const file = bucket.file(fileName);
-        await file.save(fileBuffer, { gzip: true });
-        updateFields.profileImage = `https://storage.googleapis.com/${bucketName}/${fileName}`;
-      } catch (error) {
-        await session.abortTransaction();
-        session.endSession();
-        return reply.code(500).send({ error: "Media file upload failed", details: error.message });
-      }
-    }
-
-    // Handle location update
-    if (location) {
-      try {
-        const parsedLocation = JSON.parse(location);
-        if (!Array.isArray(parsedLocation) || parsedLocation.length !== 2 || isNaN(parsedLocation[0]) || isNaN(parsedLocation[1])) {
-          throw new Error("Invalid location format. Expected [longitude, latitude].");
+    try {
+      const parts = req.parts();
+      let userId, name, username, phoneNumber, fileBuffer, fileName, location, fcmToken;
+      
+      // Process file upload outside the transaction to reduce transaction scope
+      for await (const part of parts) {
+        if (part.file) {
+          fileBuffer = await part.toBuffer();
+          fileName = part.filename;
+        } else {
+          switch (part.fieldname) {
+            case "userId":
+              userId = part.value;
+              break;
+            case "name":
+              name = part.value;
+              break;
+            case "username":
+              username = part.value;
+              break;
+            case "phoneNumber":
+              phoneNumber = part.value;
+              break;
+            case "location":
+              location = part.value;
+              break;
+            case "fcmToken":
+              fcmToken = part.value;
+              break;
+          }
         }
-        updateFields.location = { type: "Point", coordinates: parsedLocation };
-      } catch (error) {
+      }
+
+      if (!userId) {
         await session.abortTransaction();
         session.endSession();
-        return reply.code(400).send({ error: "Invalid location format", details: error.message });
+        return reply.code(400).send({ error: "User ID is required" });
       }
-    }
 
-    if (name) updateFields.name = name;
-    if (fcmToken) updateFields.fcmToken = fcmToken;
+      // Handle file upload outside of transaction
+      let profileImageUrl;
+      if (fileBuffer) {
+        try {
+          const bucket = storage.bucket(bucketName);
+          const file = bucket.file(fileName);
+          await file.save(fileBuffer, { gzip: true });
+          profileImageUrl = `https://storage.googleapis.com/${bucketName}/${fileName}`;
+        } catch (error) {
+          await session.abortTransaction();
+          session.endSession();
+          return reply.code(500).send({ error: "Media file upload failed", details: error.message });
+        }
+      }
 
-    const updatedUser = await User.findOneAndUpdate(
-      { _id: userId },
-      { $set: updateFields },
-      { new: true, session }
-    );
+      let updateFields = {};
+      
+      // Handle username uniqueness
+      if (username) {
+        const existingUsername = await User.findOne({ 
+          username, 
+          _id: { $ne: userId } 
+        }).session(session);
+        
+        if (existingUsername) {
+          await session.abortTransaction();
+          session.endSession();
+          return reply.code(409).send({ error: "Username already exists" });
+        }
+        updateFields.username = username;
+      }
 
-    if (!updatedUser) {
+      // Handle phoneNumber uniqueness
+      if (phoneNumber) {
+        const existingPhoneNumber = await User.findOne({ 
+          phoneNumber, 
+          _id: { $ne: userId } 
+        }).session(session);
+        
+        if (existingPhoneNumber) {
+          await session.abortTransaction();
+          session.endSession();
+          return reply.code(409).send({ error: "User with this Phone Number already exists" });
+        }
+        updateFields.phoneNumber = phoneNumber;
+      }
+
+      // Add profile image URL to update fields if available
+      if (profileImageUrl) {
+        updateFields.profileImage = profileImageUrl;
+      }
+
+      // Handle location update
+      if (location) {
+        try {
+          const parsedLocation = JSON.parse(location);
+          if (!Array.isArray(parsedLocation) || 
+              parsedLocation.length !== 2 || 
+              isNaN(parsedLocation[0]) || 
+              isNaN(parsedLocation[1])) {
+            throw new Error("Invalid location format. Expected [longitude, latitude].");
+          }
+          updateFields.location = { type: "Point", coordinates: parsedLocation };
+        } catch (error) {
+          await session.abortTransaction();
+          session.endSession();
+          return reply.code(400).send({ error: "Invalid location format", details: error.message });
+        }
+      }
+
+      if (name) updateFields.name = name;
+      if (fcmToken) updateFields.fcmToken = fcmToken;
+
+      // Perform the actual update in transaction
+      const updatedUser = await User.findOneAndUpdate(
+        { _id: userId },
+        { $set: updateFields },
+        { new: true, session }
+      );
+
+      if (!updatedUser) {
+        await session.abortTransaction();
+        session.endSession();
+        return reply.code(404).send({ error: "User not found" });
+      }
+
+      // Successfully completed the transaction
+      await session.commitTransaction();
+      session.endSession();
+      success = true;
+      reply.send({ success: true, user: updatedUser });
+
+    } catch (error) {
       await session.abortTransaction();
       session.endSession();
-      return reply.code(404).send({ error: "User not found" });
+      
+      // Check if it's a write conflict and we have retries left
+      if ((error.message.includes("Write conflict") || 
+          error.message.includes("WriteConflict")) && 
+          retries > 1) {
+        retries--;
+        console.log(`Write conflict occurred. Retrying (${retries} attempts left)...`);
+        // Add a small delay before retrying to reduce chance of another conflict
+        await new Promise(resolve => setTimeout(resolve, 100 * (4 - retries)));
+      } else {
+        // If not a write conflict or no more retries, exit the retry loop
+        retries = 0;
+        reply.code(500).send({ 
+          error: "Failed to update user", 
+          details: error.message 
+        });
+      }
     }
-
-    await session.commitTransaction();
-    session.endSession();
-    reply.send({ success: true, user: updatedUser });
-
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    reply.code(500).send({ error: "Failed to update user", details: error.message });
   }
 };

@@ -37,7 +37,7 @@ app.get("/", async (request, reply) => {
 
 // Redis client  '127.0.0.1',//   10.113.121.147
 const redisClient = new Redis({
-  host:  "10.113.121.147",
+  host:  "127.0.0.1",
   port: 6379,
   maxRetriesPerRequest: 3,
   retryStrategy(times) {

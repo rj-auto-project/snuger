@@ -123,6 +123,7 @@ export const markAsRead = async (req, reply) => {
 };
 
 export const getUserNotifications = async (req, reply) => {
+  console.log("Fetching notifications for user:", req.params.userId);
   try {
     const { userId } = req.params;
     const { page = 1, limit = 20 } = req.query;
@@ -134,7 +135,6 @@ export const getUserNotifications = async (req, reply) => {
       .limit(limit)
       .populate("actorId", "username profileImage")
       .lean();
-
     const formatted = notifications.map(n => ({
       ...n,
       actions: n.type === 'proxy_request' ? ['Create', 'Decline'] : [],
@@ -144,7 +144,8 @@ export const getUserNotifications = async (req, reply) => {
 
     reply.send(formatted);
   } catch (error) {
-    reply.code(500).send({ error: "Fetch failed" });
+    console.error("Fetch failed:", error);
+    reply.code(500).send({ error: "Fetch failed", error });
   }
 };
 
