@@ -247,6 +247,7 @@ export const updateUser = async (req, reply) => {
       if (profileImageUrl) {
         updateFields.profileImage = profileImageUrl;
       }
+      
 
       // Handle location update
       if (location) {
