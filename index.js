@@ -37,7 +37,7 @@ app.get("/", async (request, reply) => {
 
 // Redis client
 const redisClient = new Redis({
-  host: '10.113.121.147',
+  host: '127.0.0.1',
   port: 6379,
   maxRetriesPerRequest: 3,
   retryStrategy(times) {
@@ -52,15 +52,15 @@ const redisClient = new Redis({
 
 // Redis event handlers
 redisClient.on('error', (err) => {
-  app.log.error('Redis Client Error:', err);
+  console.log('Redis Client Error:', err);
 });
 
 redisClient.on('connect', () => {
-  app.log.info('Redis Client Connected');
+  console.log('Redis Client Connected');
 });
 
 redisClient.on('ready', () => {
-  app.log.info('Redis Client Ready');
+  console.log('Redis Client Ready');
 });
 
 app.register(fastifyIO, {

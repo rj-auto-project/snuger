@@ -26,9 +26,8 @@ const chatSchema = new mongoose.Schema({
   unreadCount: { type: Map, of: Number, default: {} }
 }, { timestamps: true });
 
-// Indexes for better query performance
+
 chatSchema.index({ participants: 1, updatedAt: -1 });
-chatSchema.index({ 'messages.messageId': 1 });
 chatSchema.index({ 'messages.from': 1, 'messages.time': -1 });
 chatSchema.index({ 'messages.to': 1, 'messages.time': -1 });
 

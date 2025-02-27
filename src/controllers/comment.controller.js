@@ -68,7 +68,7 @@ export const fetchComment = async (req, reply) => {
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(Number(limit))
-      .populate("userId", "name");
+      .populate("userId","name username profileImage");
 
     await session.commitTransaction();
     session.endSession();
