@@ -52,7 +52,7 @@ const redisClient = new Redis({
 
 // Redis event handlers
 redisClient.on('error', (err) => {
-  console.log('Redis Client Error:', err);
+  console.log('Redis Client Error:-', err);
 });
 
 redisClient.on('connect', () => {
