@@ -83,18 +83,18 @@ app.get('/health', async (request, reply) => {
 
 const randomId = () => randomBytes(8).toString('hex');
 
-import { RedisSessionStore } from './src/service/sessionStore.js';
+import { RedisSessionStore } from './src/service/sessionStore.service.js';
 const sessionStore = new RedisSessionStore(redisClient);
 
-import { RedisMessageStore } from './src/service/messageStore.js';
+import { RedisMessageStore } from './src/service/message.service.js';
 const messageStore = new RedisMessageStore(redisClient);
 
 app.ready(err => {
   if (err) throw err;
 
-  app.io.use(async (socket, next) => {
+  const authenticateSocket = async (socket, next) => {
     try {
-      const sessionID = socket.handshake.auth.sessionID;
+      const sessionID = socket.handshake.auth && socket.handshake.auth.sessionID;
       if (sessionID) {
         const session = await sessionStore.findSession(sessionID);
         if (session) {
@@ -104,7 +104,7 @@ app.ready(err => {
           return next();
         }
       }
-      const username = socket.handshake.auth.username;
+      const username = socket.handshake.auth && socket.handshake.auth.username;
       if (!username) {
         return next(new Error('invalid username'));
       }
@@ -115,7 +115,9 @@ app.ready(err => {
     } catch (error) {
       next(error);
     }
-  });
+  };
+
+  app.io.use(authenticateSocket);
 
   app.io.on('connection', async (socket) => {
     // persist session

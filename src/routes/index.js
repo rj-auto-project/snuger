@@ -8,7 +8,7 @@ import { reportRoutes } from "./report.routes.js";
 import { helpRoutes } from "./help.routes.js";
 import { activeStatusRoutes } from "./lastActive.routes.js";
 import { userCountRoutes } from "./userCount.routes.js";
-import { chatRoutes } from "./chat.routes.js";
+// import { chatRoutes } from "./chat.routes.js";
 import { authRoutes } from "./auth.routes.js";
 import { getTopSnugerRoutes } from "./topSuger.routes.js";
 import { notificationRoutes } from "./notification.routes.js";
@@ -26,6 +26,6 @@ export const registerRoutes = async (fastify) => {
   fastify.register(activeStatusRoutes, { prefix: "/api/activeStatus" });
   fastify.register(userCountRoutes, { prefix: "/api/userCount" });
   fastify.register(getTopSnugerRoutes, { prefix: "/api/topSnuger" });
-  fastify.register(chatRoutes, { prefix: "/api/chats" });
+  // fastify.register(chatRoutes, { prefix: "/api/chats" });
   fastify.register(notificationRoutes, { prefix: "/api/notification" });
 };
