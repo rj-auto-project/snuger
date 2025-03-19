@@ -325,31 +325,3 @@ export const handlePostDeletion = async (postIds) => {
   }
 };
 
-/**
- * Get trending posts near a specific location
- */
-export const getTrendingPosts = async (coordinates, maxDistance = MAX_DISTANCE_METERS, limit = TOP_POSTS_LIMIT) => {
-  try {
-    // Find trending posts near the specified location
-    const trendingPosts = await Post.find({
-      isTrending: true,
-      location: {
-        $near: {
-          $geometry: {
-            type: "Point",
-            coordinates: coordinates
-          },
-          $maxDistance: maxDistance
-        }
-      }
-    })
-    .sort({ trendingPosition: 1 })
-    .limit(limit)
-    .populate('userId', 'username profileImage') // Populate user details if needed
-    .lean();
-    
-    return trendingPosts;
-  } catch (error) {
-    throw error;
-  }
-};

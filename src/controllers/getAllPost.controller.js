@@ -354,3 +354,34 @@ export const getTopPosts = async (req, reply) => {
     });
   }
 };
+
+export const getHotsPosts = async (req, reply) => {
+  const { lat, long, maxDistance = 5000, limit = 20 } = req.query;
+
+  if (!lat || !long) {
+    return reply.status(400).send({ error: "lat and long are required." });
+  }
+
+  try {
+    const trendingPosts = await Post.find({
+      isTrending: true,
+      location: {
+        $near: {
+          $geometry: { type: "Point", coordinates: [parseFloat(long), parseFloat(lat)] },
+          $maxDistance: Number(maxDistance),
+        },
+      },
+    })
+      .select("-embedding")
+      .populate({ path: "userId", select: "username profileImage", model: "User", options: { lean: true } })
+      .sort({ trendingPosition: 1 })
+      .limit(Number(limit))
+      .lean();
+
+    const rankedPosts = trendingPosts.map((post, index) => ({ ...post, rank: index + 1 }));
+    reply.send({ success: true, hotsPosts: rankedPosts });
+  } catch (error) {
+    console.error("Error fetching hot posts:", error);
+    reply.status(500).send({ error: "Failed to fetch hot posts", details: error.message });
+  }
+};
