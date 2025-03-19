@@ -18,6 +18,9 @@ const postSchema = new mongoose.Schema(
     totalComment: { type: Number, default: 0 },
     reportOptions: [{ type: String }],
     isAnonymous: { type: Boolean, default: false },
+    trendingPosition: { type: Number },
+    isTrending: { type: Boolean, default: false },
+    trendingUpdatedAt: { type: Date },
     trendingPosition: { type: Number, default: 0 },
     groupID: {
       type: mongoose.Schema.Types.ObjectId,
@@ -57,7 +60,7 @@ const postSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
+postSchema.index({ isTrending: 1, trendingPosition: 1 });
 postSchema.index({ location: "2dsphere" });
 postSchema.index({ createdAt: -1 });
 postSchema.index({ totalVotes: -1 });
