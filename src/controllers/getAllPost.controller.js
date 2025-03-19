@@ -373,13 +373,25 @@ export const getHotsPosts = async (req, reply) => {
       },
     })
       .select("-embedding")
-      .populate({ path: "userId", select: "username profileImage", model: "User", options: { lean: true } })
+      .populate({ 
+        path: "userId", 
+        select: "username profileImage name", 
+        model: "User", 
+        options: { lean: true } 
+      })
       .sort({ trendingPosition: 1 })
       .limit(Number(limit))
-      .lean();
+      .lean()
+      .transform(docs => {
+        return docs.map(doc => {
+          const transformed = { ...doc };
+          transformed.user = transformed.userId;
+          delete transformed.userId;
+          return { ...transformed, rank: transformed.trendingPosition || 0 };
+        });
+      });
 
-    const rankedPosts = trendingPosts.map((post, index) => ({ ...post, rank: index + 1 }));
-    reply.send({ success: true, hotsPosts: rankedPosts });
+    reply.send({ success: true, posts: trendingPosts });
   } catch (error) {
     console.error("Error fetching hot posts:", error);
     reply.status(500).send({ error: "Failed to fetch hot posts", details: error.message });
