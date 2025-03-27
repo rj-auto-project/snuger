@@ -11,7 +11,6 @@ export const getPostsByLocation = async (req, reply) => {
     });
   }
 
-
   try {
     const radiusInMeters = 5000;
 
@@ -84,7 +83,7 @@ export const getPostsByLocation = async (req, reply) => {
           createdAt: 1,
           trendingPosition: 1,
           timestamps: 1,
-          user: { username: 1, profileImage: 1, name: 1 },
+          user: { _id: 1, username: 1, profileImage: 1, name: 1 },
           userVote: 1,
         },
       },
@@ -145,7 +144,10 @@ export const getPostsByUserId = async (req, reply) => {
             {
               $match: {
                 $expr: {
-                  $and: [{ $eq: ["$postId", "$$postId"] }, { $eq: ["$userId", "$$userId"] }],
+                  $and: [
+                    { $eq: ["$postId", "$$postId"] },
+                    { $eq: ["$userId", "$$userId"] },
+                  ],
                 },
               },
             },
@@ -174,7 +176,7 @@ export const getPostsByUserId = async (req, reply) => {
           createdAt: 1,
           trendingPosition: 1,
           timestamps: 1,
-          user: { username: 1, profileImage: 1, name: 1 },
+          user: { _id: 1, username: 1, profileImage: 1, name: 1 },
           userVote: 1,
         },
       },
@@ -227,14 +229,14 @@ export const getGroupPosts = async (req, reply) => {
         path: "userId",
         select: "username profileImage name",
         model: "User",
-        options: { lean: true }
+        options: { lean: true },
       })
       .populate("groupID", "name")
       .sort({ createdAt: -1 })
       .limit(Number(limit))
       .lean()
-      .transform(docs => {
-        return docs.map(doc => {
+      .transform((docs) => {
+        return docs.map((doc) => {
           const transformed = { ...doc };
           transformed.user = transformed.userId;
           delete transformed.userId;
@@ -290,14 +292,14 @@ export const getTopPosts = async (req, reply) => {
           path: "userId",
           select: "username profileImage name",
           model: "User",
-          options: { lean: true }
+          options: { lean: true },
         })
         .populate("groupID", "name")
         .sort({ totalUpvotes: -1, createdAt: -1 })
         .limit(10)
         .lean()
-        .transform(docs => {
-          return docs.map(doc => {
+        .transform((docs) => {
+          return docs.map((doc) => {
             const transformed = { ...doc };
             transformed.user = transformed.userId;
             delete transformed.userId;
@@ -319,23 +321,20 @@ export const getTopPosts = async (req, reply) => {
           $maxDistance: Number(radius),
         },
       },
-      $or: [
-        { groupID: { $exists: false } },
-        { groupID: null }
-      ]
+      $or: [{ groupID: { $exists: false } }, { groupID: null }],
     })
       .select("-embedding")
       .populate({
         path: "userId",
         select: "username profileImage name",
         model: "User",
-        options: { lean: true }
+        options: { lean: true },
       })
       .sort({ totalUpvotes: -1, createdAt: -1 })
       .limit(10)
       .lean()
-      .transform(docs => {
-        return docs.map(doc => {
+      .transform((docs) => {
+        return docs.map((doc) => {
           const transformed = { ...doc };
           transformed.user = transformed.userId;
           delete transformed.userId;
@@ -352,5 +351,53 @@ export const getTopPosts = async (req, reply) => {
       error: "Failed to fetch posts",
       details: error.message,
     });
+  }
+};
+
+export const getHotsPosts = async (req, reply) => {
+  const { lat, long, maxDistance = 5000, limit = 20 } = req.query;
+
+  if (!lat || !long) {
+    return reply.status(400).send({ error: "lat and long are required." });
+  }
+
+  try {
+    const trendingPosts = await Post.find({
+      isTrending: true,
+      location: {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [parseFloat(long), parseFloat(lat)],
+          },
+          $maxDistance: Number(maxDistance),
+        },
+      },
+    })
+      .select("-embedding")
+      .populate({
+        path: "userId",
+        select: "username profileImage name",
+        model: "User",
+        options: { lean: true },
+      })
+      .sort({ trendingPosition: 1 })
+      .limit(Number(limit))
+      .lean()
+      .transform((docs) => {
+        return docs.map((doc) => {
+          const transformed = { ...doc };
+          transformed.user = transformed.userId;
+          delete transformed.userId;
+          return { ...transformed, rank: transformed.trendingPosition || 0 };
+        });
+      });
+
+    reply.send({ success: true, posts: trendingPosts });
+  } catch (error) {
+    console.error("Error fetching hot posts:", error);
+    reply
+      .status(500)
+      .send({ error: "Failed to fetch hot posts", details: error.message });
   }
 };

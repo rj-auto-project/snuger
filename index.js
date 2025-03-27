@@ -51,36 +51,10 @@ const redisClient = new Redis({
   }
 });
 
-// Redis event handlers
-redisClient.on('error', (err) => {
-  console.log('Redis Client Error:-', err);
-});
-
-redisClient.on('connect', () => {
-  console.log('Redis Client Connected');
-});
-
-redisClient.on('ready', () => {
-  console.log('Redis Client Ready');
-});
-
-app.register(fastifyIO, {
-  cors: {
-    origin: "http://localhost:8080",
-    methods: ["GET", "POST"],
-    credentials: true
-  },
-  pingTimeout: 60000,
-  pingInterval: 25000,
-  transports: ['websocket', 'polling'],
-  adapter: createAdapter(redisClient, redisClient.duplicate())
-});
-
 // Add health check route
 app.get('/health', async (request, reply) => {
   return { status: 'ok' };
 });
-
 
 const randomId = () => randomBytes(8).toString('hex');
 
@@ -222,16 +196,12 @@ const cleanup = async () => {
 process.on('SIGTERM', cleanup);
 process.on('SIGINT', cleanup);
 
-
-
-
-
 // Start server
 const start = async () => {
   try {
     await connectDB(env.MONGO_URI);
 
-    app.listen({ port: env.PORT, host: "0.0.0.0" }, (err, addr) => {
+    app.listen({ port: env.PORT, host: "0.0.0.0", }, (err, addr) => {
       if (err) {
         console.error(err);
         process.exit(1);
