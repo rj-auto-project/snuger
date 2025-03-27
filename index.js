@@ -7,11 +7,12 @@ import rateLimitPlugin from "./src/plugin/ratelimiter.js";
 import fastifyCors from "@fastify/cors";
 import { errorHandler } from "./src/utils/error.js";
 import { registerRoutes } from "./src/routes/index.js";
-import fastifySocketIO from "fastify-socket.io";
 import Redis from 'ioredis';
 import fastifyIO from 'fastify-socket.io';
 import { randomBytes } from 'crypto';
 import { createAdapter } from '@socket.io/redis-adapter';
+import { HybridMessageStore } from './src/service/message.service.js';
+import { RedisSessionStore } from './src/service/sessionStore.service.js';
 
 
 
@@ -37,7 +38,7 @@ app.get("/", async (request, reply) => {
 
 // Redis client  '127.0.0.1',//   10.113.121.147
 const redisClient = new Redis({
-  host:  "10.113.121.147",
+  host:  "127.0.0.1",
   port: 6379,
   maxRetriesPerRequest: 3,
   retryStrategy(times) {
@@ -83,11 +84,9 @@ app.get('/health', async (request, reply) => {
 
 const randomId = () => randomBytes(8).toString('hex');
 
-import { RedisSessionStore } from './src/service/sessionStore.service.js';
 const sessionStore = new RedisSessionStore(redisClient);
 
-import { RedisMessageStore } from './src/service/message.service.js';
-const messageStore = new RedisMessageStore(redisClient);
+const messageStore = new HybridMessageStore(redisClient);
 
 app.ready(err => {
   if (err) throw err;
@@ -108,6 +107,8 @@ app.ready(err => {
       if (!username) {
         return next(new Error('invalid username'));
       }
+
+      // random userID
       socket.sessionID = randomId();
       socket.userID = randomId();
       socket.username = username;
@@ -136,7 +137,7 @@ app.ready(err => {
     // join the "userID" room
     socket.join(socket.userID);
 
-    // fetch existing users
+    // fetch existing users and messages
     const users = [];
     const [messages, sessions] = await Promise.all([
       messageStore.findMessagesForUser(socket.userID),
@@ -172,14 +173,19 @@ app.ready(err => {
     });
 
     // forward the private message to the right recipient (and to other tabs of the sender)
-    socket.on('private message', ({ content, to }) => {
+    socket.on('private message', async ({ content, to }) => {
       const message = {
         content,
         from: socket.userID,
         to,
       };
       socket.to(to).to(socket.userID).emit('private message', message);
-      messageStore.saveMessage(message);
+      try {
+        await messageStore.saveMessage(message);
+      } catch (error) {
+        app.log.error('Error saving message:', error);
+        socket.emit('message error', { error: 'Failed to save message' });
+      }
     });
 
     // notify users upon disconnection

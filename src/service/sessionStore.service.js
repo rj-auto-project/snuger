@@ -23,7 +23,7 @@ class InMemorySessionStore extends SessionStore {
   }
 }
 
-const SESSION_TTL = 24 * 60 * 60;
+const SESSION_TTL = 1 * 60 * 60;
 const mapSession = ([userID, username, connected]) =>
   userID ? { userID, username, connected: connected === "true" } : undefined;
 
