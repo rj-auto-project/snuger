@@ -1,4 +1,6 @@
 import { Message } from '../model/message.model.js';
+import { Chat } from '../model/chat.model.js';
+
 class MessageStore {
   saveMessage(message) {}
   findMessagesForUser(userID) {}
@@ -21,7 +23,7 @@ class InMemoryMessageStore extends MessageStore {
   }
 }
 
-const CONVERSATION_TTL = 24 * 60 * 60;
+const CONVERSATION_TTL = 24 * 60 * 60; // 24 hours in seconds
 
 class RedisMessageStore extends MessageStore {
   constructor(redisClient) {
@@ -74,10 +76,112 @@ class MongoMessageStore extends MessageStore {
   }
 }
 
+class HybridMessageStore extends MessageStore {
+  constructor(redisClient) {
+    super();
+    this.redisClient = redisClient;
+  }
+
+  async saveMessage(message) {
+    try {
+      // 1. Save to Redis for real-time access
+      const value = JSON.stringify(message);
+      await this.redisClient
+        .multi()
+        .rpush(`messages:${message.from}:${message.to}`, value)
+        .rpush(`messages:${message.to}:${message.from}`, value)
+        .expire(`messages:${message.from}:${message.to}`, CONVERSATION_TTL)
+        .expire(`messages:${message.to}:${message.from}`, CONVERSATION_TTL)
+        .exec();
+
+      // 2. Save to MongoDB for persistence
+      const participants = [message.from, message.to].sort();
+      let chat = await Chat.findOne({ participants });
+      
+      if (!chat) {
+        chat = await Chat.create({ participants });
+      }
+
+      const newMessage = await Message.create({
+        content: message.content,
+        sender: message.from,
+        chatId: chat._id,
+        type: 'text',
+        status: 'sent'
+      });
+
+      // Update chat's last message
+      chat.lastMessage = newMessage._id;
+      chat.lastActivity = new Date();
+      await chat.save();
+
+      return newMessage;
+    } catch (error) {
+      console.error('Error saving message:', error);
+      throw error;
+    }
+  }
+
+  async findMessagesForUser(userID) {
+    try {
+      // 1. Try Redis first for recent messages
+      const chatKeys = await this.redisClient.keys(`messages:${userID}:*`);
+      if (chatKeys.length > 0) {
+        const messages = [];
+        for (const key of chatKeys) {
+          const chatMessages = await this.redisClient.lrange(key, 0, -1);
+          messages.push(...chatMessages.map(msg => JSON.parse(msg)));
+        }
+        return messages;
+      }
+
+      // 2. Fallback to MongoDB
+      const chats = await Chat.find({ 
+        participants: userID 
+      }).populate({
+        path: 'lastMessage',
+        select: 'content sender status createdAt'
+      });
+
+      return chats.map(chat => ({
+        chatId: chat._id,
+        participants: chat.participants,
+        lastMessage: chat.lastMessage
+      }));
+    } catch (error) {
+      console.error('Error finding messages:', error);
+      throw error;
+    }
+  }
+
+  async getChatMessages(chatId, limit = 50, skip = 0) {
+    return Message.find({ chatId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .select('content sender status createdAt')
+      .lean();
+  }
+
+  async markMessagesAsRead(chatId, userId) {
+    await Message.updateMany(
+      {
+        chatId,
+        sender: { $ne: userId },
+        status: { $ne: 'read' }
+      },
+      {
+        $set: { status: 'read' }
+      }
+    );
+  }
+}
+
 export {
   MessageStore,
   InMemoryMessageStore,
   RedisMessageStore,
   MongoMessageStore,
+  HybridMessageStore,
   Message
 };
