@@ -14,8 +14,6 @@ import { createAdapter } from '@socket.io/redis-adapter';
 import { HybridMessageStore } from './src/service/message.service.js';
 import { RedisSessionStore } from './src/service/sessionStore.service.js';
 
-
-
 const app = fastify();
 
 // Register plugins
@@ -104,13 +102,14 @@ app.ready(err => {
         }
       }
       const username = socket.handshake.auth && socket.handshake.auth.username;
+      const userID = socket.handshake.auth && socket.handshake.auth.userID;
       if (!username) {
         return next(new Error('invalid username'));
       }
 
       // random userID
-      socket.sessionID = randomId();
-      socket.userID = randomId();
+      socket.sessionID = userID;
+      socket.userID = userID
       socket.username = username;
       next();
     } catch (error) {
@@ -179,6 +178,7 @@ app.ready(err => {
         from: socket.userID,
         to,
       };
+      console.log('Message:', message);
       socket.to(to).to(socket.userID).emit('private message', message);
       try {
         await messageStore.saveMessage(message);

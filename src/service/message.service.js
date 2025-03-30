@@ -6,75 +6,7 @@ class MessageStore {
   findMessagesForUser(userID) {}
 }
 
-class InMemoryMessageStore extends MessageStore {
-  constructor() {
-    super();
-    this.messages = [];
-  }
-
-  saveMessage(message) {
-    this.messages.push(message);
-  }
-
-  findMessagesForUser(userID) {
-    return this.messages.filter(
-      ({ from, to }) => from === userID || to === userID
-    );
-  }
-}
-
 const CONVERSATION_TTL = 24 * 60 * 60; // 24 hours in seconds
-
-class RedisMessageStore extends MessageStore {
-  constructor(redisClient) {
-    super();
-    this.redisClient = redisClient;
-  }
-
-  saveMessage(message) {
-    const value = JSON.stringify(message);
-    this.redisClient
-      .multi()
-      .rpush(`messages:${message.from}`, value)
-      .rpush(`messages:${message.to}`, value)
-      .expire(`messages:${message.from}`, CONVERSATION_TTL)
-      .expire(`messages:${message.to}`, CONVERSATION_TTL)
-      .exec();
-  }
-
-  findMessagesForUser(userID) {
-    return this.redisClient
-      .lrange(`messages:${userID}`, 0, -1)
-      .then((results) => {
-        return results.map((result) => JSON.parse(result));
-      });
-  }
-}
-
-class MongoMessageStore extends MessageStore {
-  async saveMessage(message) {
-    const newMessage = new Message({
-      sender: message.from,
-      chat: message.to, // Assuming 'to' field contains chat ID
-      content: message.content,
-      type: message.type || 'text',
-      status: 'sent'
-    });
-    return await newMessage.save();
-  }
-
-  async findMessagesForUser(userID) {
-    return await Message.find({
-      $or: [
-        { sender: userID },
-        { chat: userID }
-      ]
-    })
-    .sort({ createdAt: -1 })
-    .populate('sender')
-    .populate('chat');
-  }
-}
 
 class HybridMessageStore extends MessageStore {
   constructor(redisClient) {
@@ -84,38 +16,61 @@ class HybridMessageStore extends MessageStore {
 
   async saveMessage(message) {
     try {
-      // 1. Save to Redis for real-time access
-      const value = JSON.stringify(message);
-      await this.redisClient
-        .multi()
-        .rpush(`messages:${message.from}:${message.to}`, value)
-        .rpush(`messages:${message.to}:${message.from}`, value)
-        .expire(`messages:${message.from}:${message.to}`, CONVERSATION_TTL)
-        .expire(`messages:${message.to}:${message.from}`, CONVERSATION_TTL)
-        .exec();
+      let chatId = message.chatId;
+      let chat;
 
-      // 2. Save to MongoDB for persistence
-      const participants = [message.from, message.to].sort();
-      let chat = await Chat.findOne({ participants });
-      
-      if (!chat) {
-        chat = await Chat.create({ participants });
+      // Create or find chat if chatId is undefined
+      if (!chatId) {
+        const participants = [message.from, message.to].sort();
+        chat = await Chat.findOne({ participants });
+        
+        if (!chat) {
+          chat = await Chat.create({ 
+            participants,
+            lastActivity: new Date()
+          });
+        }
+        chatId = chat._id;
+      } else {
+        chat = await Chat.findById(chatId);
+        if (!chat) {
+          throw new Error('Chat not found');
+        }
       }
 
+      // Save message to MongoDB
       const newMessage = await Message.create({
         content: message.content,
         sender: message.from,
-        chatId: chat._id,
+        chatId: chatId,
         type: 'text',
         status: 'sent'
       });
 
-      // Update chat's last message
-      chat.lastMessage = newMessage._id;
-      chat.lastActivity = new Date();
-      await chat.save();
+      // Save to Redis for real-time access
+      const value = JSON.stringify({
+        ...message,
+        chatId,
+        _id: newMessage._id,
+        createdAt: newMessage.createdAt
+      });
 
-      return newMessage;
+      await this.redisClient
+        .multi()
+        .rpush(`chat:${chatId}:messages`, value)
+        .expire(`chat:${chatId}:messages`, CONVERSATION_TTL)
+        .exec();
+
+      // Update chat's last message
+      await Chat.findByIdAndUpdate(chatId, {
+        lastMessage: newMessage._id,
+        lastActivity: new Date()
+      });
+
+      return {
+        ...newMessage.toObject(),
+        chatId
+      };
     } catch (error) {
       console.error('Error saving message:', error);
       throw error;
@@ -179,9 +134,6 @@ class HybridMessageStore extends MessageStore {
 
 export {
   MessageStore,
-  InMemoryMessageStore,
-  RedisMessageStore,
-  MongoMessageStore,
   HybridMessageStore,
   Message
 };

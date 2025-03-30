@@ -1,37 +1,15 @@
 import mongoose from 'mongoose';
 
-const messageSchema = new mongoose.Schema({
-  content: {
-    type: String,
-    required: true
-  },
-  from: {
-    type: String,  // userID from session
-    required: true,
-    index: true
-  },
-  to: {
-    type: String,  // userID from session
-    required: true,
-    index: true
-  },
-  read: {
-    type: Boolean,
-    default: false
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-});
-
 const chatSchema = new mongoose.Schema({
   participants: [{
     type: String,  // userIDs from session store
     required: true
   }],
-  messages: [messageSchema],
   lastMessage: {
+    type: mongoose.Schema.Types.ObjectId,  // Changed from Date to ObjectId
+    ref: 'Messages'                         // Reference to Message model
+  },
+  lastMessageTime: {                       // Added separate field for last message time
     type: Date,
     default: Date.now
   },
@@ -51,7 +29,7 @@ chatSchema.pre('save', function(next) {
 
 // Index for efficient chat lookup
 chatSchema.index({ participants: 1 });
-chatSchema.index({ lastMessage: -1 });
+chatSchema.index({ lastMessageTime: -1 });
 
 // Methods to handle chat operations
 chatSchema.statics.findOrCreateChat = async function(userID1, userID2) {
@@ -71,8 +49,9 @@ chatSchema.statics.findOrCreateChat = async function(userID1, userID2) {
 
 // Add message to chat
 chatSchema.methods.addMessage = async function(message) {
-  this.messages.push(message);
-  this.lastMessage = new Date();
+  this.messages.push(message._id);
+  this.lastMessage = message._id;        // Store message ObjectId
+  this.lastMessageTime = new Date();     // Update time separately
   return this.save();
 };
 
