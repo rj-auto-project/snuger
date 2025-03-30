@@ -1,43 +1,31 @@
-// import { getChats, getOrCreateChat } from "../controllers/chat.controller.js";
-// import { getMessages } from "../controllers/message.controller.js";
+import { authGuard } from "../middleware/auth.js";
+import {
+  getUserChats,
+  getChatById,
+  getChatByParticipants,
+  getUnreadCount,
+} from "../controllers/chat.controller.js";
 
-// export const chatRoutes = async (fastify) => {
-//   fastify.get(
-//     "/",
-//     {
-//       schema: {
-//         querystring: {
-//           type: "object",
-//           properties: {
-//             page: { type: "integer", minimum: 1, default: 1 },
-//             limit: { type: "integer", minimum: 1, maximum: 100, default: 20 },
-//           },
-//           additionalProperties: false,
-//         },
-//       },
-//     },
-//     getChats
-//   );
+export const chatRoutes = async(fastify) => {
+  // Get all user chats
+  fastify.get("/all/:userId", {
+    handler: getUserChats,
+  });
 
-//   fastify.get(
-//     "/:participantId",
-//     getOrCreateChat
-//   );
+  // Get specific chat
+  fastify.get("/chats/:chatId/:userId", {
+    handler: getChatById,
+  });
 
-//   fastify.get(
-//     "/:chatId/messages",
-//     {
-//       schema: {
-//         querystring: {
-//           type: "object",
-//           properties: {
-//             page: { type: "integer", minimum: 1, default: 1 },
-//             limit: { type: "integer", minimum: 1, maximum: 100, default: 20 },
-//           },
-//           additionalProperties: false,
-//         },
-//       },
-//     },
-//     getMessages
-//   );
-// };
+  // Get/create chat with participant
+  fastify.get("/chats/participant/:participantId", {
+    handler: getChatByParticipants,
+    preHandler: authGuard,
+  });
+
+  // Get unread count
+  fastify.get("/chats/:chatId/unread", {
+    handler: getUnreadCount,
+    preHandler: authGuard,
+  });
+}
