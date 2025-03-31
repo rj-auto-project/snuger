@@ -7,7 +7,7 @@ const chatSchema = new mongoose.Schema({
   }],
   lastMessage: {
     type: mongoose.Schema.Types.ObjectId,  // Changed from Date to ObjectId
-    ref: 'Messages'                         // Reference to Message model
+    ref: 'Message'                         // Reference to Message model
   },
   lastMessageTime: {                       // Added separate field for last message time
     type: Date,
