@@ -26,7 +26,6 @@ export const getUserChats = async (request, reply) => {
         model: "User", // Make sure this matches your User model name
         select: "name username profileImage",
       });
-    console.log(chats);
 
     // Format response with opposite user's details
     const formattedChats = chats.map((chat) => {
@@ -71,34 +70,35 @@ export const getUserChats = async (request, reply) => {
 /**
  * Get a single chat by ID
  */
-export const getChatById = async (request, reply) => {
+export const getMessagesOfChatById = async (request, reply) => {
   try {
-    const { chatId, userId } = request.params;
-    const chat = await Chat.findOne({
-      _id: chatId,
-      participants: { $in: [userId] },
-    })
-      .populate({
-        path: "lastMessage",
-        model: "Message",
-        select: "content sender createdAt status",
-      })
-      .populate({
-        path: "participants",
-        model: "User",
-        select: "name username profileImage",
-      });
+    const { chatId } = request.params;
+    const page = parseInt(request.query.page) || 1;
+    const limit = parseInt(request.query.limit) || 20;
+    const skip = (page - 1) * limit;
 
-    if (!chat) {
-      return reply.status(404).send({
-        success: false,
-        error: "Chat not found or unauthorized",
-      });
-    }
+    // Get messages for this chat
+    const messages = await Message.find({ chatId })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("sender", "name username profileImage")
+      .lean();
+
+    // Get total message count for pagination
+    const totalMessages = await Message.countDocuments({ chatId });
 
     return reply.send({
       success: true,
-      data: formatChatResponse(chat, userId),
+      data: {
+        messages: messages.reverse(), // Return messages in chronological order
+        pagination: {
+          total: totalMessages,
+          page,
+          pages: Math.ceil(totalMessages / limit),
+          hasMore: page * limit < totalMessages,
+        },
+      },
     });
   } catch (error) {
     request.log.error("Error fetching chat:", error);

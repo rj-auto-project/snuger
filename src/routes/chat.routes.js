@@ -1,7 +1,7 @@
 import { authGuard } from "../middleware/auth.js";
 import {
   getUserChats,
-  getChatById,
+  getMessagesOfChatById,
   getChatByParticipants,
   getUnreadCount,
 } from "../controllers/chat.controller.js";
@@ -13,8 +13,8 @@ export const chatRoutes = async(fastify) => {
   });
 
   // Get specific chat
-  fastify.get("/chats/:chatId/:userId", {
-    handler: getChatById,
+  fastify.get("/chats/:chatId", {
+    handler: getMessagesOfChatById,
   });
 
   // Get/create chat with participant
