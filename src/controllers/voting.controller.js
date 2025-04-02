@@ -158,7 +158,7 @@ export const voteStatus = async (req, reply) => {
     }
     
     reply.status(500).send({ 
-      message: "Error updating vote status", 
+      message: `${error.message} updating vote status`, 
       error: error.message 
     });
   }
