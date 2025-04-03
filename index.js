@@ -7,9 +7,12 @@ import rateLimitPlugin from "./src/plugin/ratelimiter.js";
 import fastifyCors from "@fastify/cors";
 import { errorHandler } from "./src/utils/error.js";
 import { registerRoutes } from "./src/routes/index.js";
-
-
-
+import Redis from 'ioredis';
+import fastifyIO from 'fastify-socket.io';
+import { randomBytes } from 'crypto';
+import { createAdapter } from '@socket.io/redis-adapter';
+// import { HybridMessageStore } from './src/service/message.service.js';
+// import { RedisSessionStore } from './src/service/sessionStore.service.js';
 
 const app = fastify();
 
@@ -31,7 +34,7 @@ app.get("/", async (request, reply) => {
   return { message: "Hello from Snuger 😎" };
 });
 
-// Redis client  '127.0.0.1',//   10.113.121.147
+// // Redis client  '127.0.0.1',//   10.113.121.147
 // const redisClient = new Redis({
 //   host:  "127.0.0.1",
 //   port: 6379,
@@ -46,9 +49,9 @@ app.get("/", async (request, reply) => {
 //   }
 // });
 
-// Redis event handlers
+// // Redis event handlers
 // redisClient.on('error', (err) => {
-//   console.log('Redis Client Error:', err);
+//   console.log('Redis Client Error:-', err);
 // });
 
 // redisClient.on('connect', () => {
@@ -59,17 +62,17 @@ app.get("/", async (request, reply) => {
 //   console.log('Redis Client Ready');
 // });
 
-// app.register(fastifyIO, {
-//   cors: {
-//     origin: "http://localhost:8080",
-//     methods: ["GET", "POST"],
-//     credentials: true
-//   },
-//   pingTimeout: 60000,
-//   pingInterval: 25000,
-//   transports: ['websocket', 'polling'],
-//   adapter: createAdapter(redisClient, redisClient.duplicate())
-// });
+app.register(fastifyIO, {
+  cors: {
+    origin: "http://localhost:8080",
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  transports: ['websocket', 'polling'],
+  // adapter: createAdapter(redisClient, redisClient.duplicate())
+});
 
 // Add health check route
 app.get('/health', async (request, reply) => {
@@ -77,20 +80,16 @@ app.get('/health', async (request, reply) => {
 });
 
 
-// const randomId = () => randomBytes(8).toString('hex');
-
-// import { RedisSessionStore } from './src/service/sessionStore.js';
 // const sessionStore = new RedisSessionStore(redisClient);
 
-// import { RedisMessageStore } from './src/service/messageStore.js';
-// const messageStore = new RedisMessageStore(redisClient);
+// const messageStore = new HybridMessageStore(redisClient);
 
 // app.ready(err => {
 //   if (err) throw err;
 
-//   app.io.use(async (socket, next) => {
+//   const authenticateSocket = async (socket, next) => {
 //     try {
-//       const sessionID = socket.handshake.auth.sessionID;
+//       const sessionID = socket.handshake.auth && socket.handshake.auth.sessionID;
 //       if (sessionID) {
 //         const session = await sessionStore.findSession(sessionID);
 //         if (session) {
@@ -100,18 +99,23 @@ app.get('/health', async (request, reply) => {
 //           return next();
 //         }
 //       }
-//       const username = socket.handshake.auth.username;
+//       const username = socket.handshake.auth && socket.handshake.auth.username;
+//       const userID = socket.handshake.auth && socket.handshake.auth.userID;
 //       if (!username) {
 //         return next(new Error('invalid username'));
 //       }
-//       socket.sessionID = randomId();
-//       socket.userID = randomId();
+
+//       // random userID
+//       socket.sessionID = userID;
+//       socket.userID = userID
 //       socket.username = username;
 //       next();
 //     } catch (error) {
 //       next(error);
 //     }
-//   });
+//   };
+
+//   app.io.use(authenticateSocket);
 
 //   app.io.on('connection', async (socket) => {
 //     // persist session
@@ -130,7 +134,7 @@ app.get('/health', async (request, reply) => {
 //     // join the "userID" room
 //     socket.join(socket.userID);
 
-//     // fetch existing users
+//     // fetch existing users and messages
 //     const users = [];
 //     const [messages, sessions] = await Promise.all([
 //       messageStore.findMessagesForUser(socket.userID),
@@ -166,14 +170,20 @@ app.get('/health', async (request, reply) => {
 //     });
 
 //     // forward the private message to the right recipient (and to other tabs of the sender)
-//     socket.on('private message', ({ content, to }) => {
+//     socket.on('private message', async ({ content, to }) => {
 //       const message = {
 //         content,
 //         from: socket.userID,
 //         to,
 //       };
+//       console.log('Message:', message);
 //       socket.to(to).to(socket.userID).emit('private message', message);
-//       messageStore.saveMessage(message);
+//       try {
+//         await messageStore.saveMessage(message);
+//       } catch (error) {
+//         app.log.error('Error saving message:', error);
+//         socket.emit('message error', { error: 'Failed to save message' });
+//       }
 //     });
 
 //     // notify users upon disconnection
@@ -219,7 +229,7 @@ const start = async () => {
   try {
     await connectDB(env.MONGO_URI);
 
-    app.listen({ port: env.PORT, host: "0.0.0.0", }, (err, addr) => {
+    app.listen({ port: env.PORT, host: "0.0.0.0" }, (err, addr) => {
       if (err) {
         console.error(err);
         process.exit(1);

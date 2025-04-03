@@ -138,7 +138,7 @@ export const voteStatus = async (req, reply) => {
 
     reply.status(200).send({ message: `Vote ${voteStatus} successfully`});
   } catch (error) {
-    if (session) {
+    if (session && session.inTransaction()) {
       await session.abortTransaction();
       session.endSession();
     }
@@ -153,7 +153,7 @@ export const voteStatus = async (req, reply) => {
     }
     
     reply.status(500).send({ 
-      message: "Error updating vote status", 
+      message: `${error.message} updating vote status`, 
       error: error.message 
     });
   }
