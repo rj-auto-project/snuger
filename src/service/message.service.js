@@ -9,10 +9,10 @@ class MessageStore {
 const CONVERSATION_TTL = 24 * 60 * 60; // 24 hours in seconds
 
 class HybridMessageStore extends MessageStore {
-  constructor(redisClient) {
-    super();
-    this.redisClient = redisClient;
-  }
+  // constructor(redisClient) {
+  //   super();
+  //   this.redisClient = redisClient;
+  // }
 
   async saveMessage(message) {
     try {
@@ -55,11 +55,11 @@ class HybridMessageStore extends MessageStore {
         createdAt: newMessage.createdAt
       });
 
-      await this.redisClient
-        .multi()
-        .rpush(`chat:${chatId}:messages`, value)
-        .expire(`chat:${chatId}:messages`, CONVERSATION_TTL)
-        .exec();
+      // await this.redisClient
+      //   .multi()
+      //   .rpush(`chat:${chatId}:messages`, value)
+      //   .expire(`chat:${chatId}:messages`, CONVERSATION_TTL)
+      //   .exec();
 
       // Update chat's last message
       await Chat.findByIdAndUpdate(chatId, {
@@ -80,15 +80,15 @@ class HybridMessageStore extends MessageStore {
   async findMessagesForUser(userID) {
     try {
       // 1. Try Redis first for recent messages
-      const chatKeys = await this.redisClient.keys(`messages:${userID}:*`);
-      if (chatKeys.length > 0) {
-        const messages = [];
-        for (const key of chatKeys) {
-          const chatMessages = await this.redisClient.lrange(key, 0, -1);
-          messages.push(...chatMessages.map(msg => JSON.parse(msg)));
-        }
-        return messages;
-      }
+      // const chatKeys = await this.redisClient.keys(`messages:${userID}:*`);
+      // if (chatKeys.length > 0) {
+      //   const messages = [];
+      //   for (const key of chatKeys) {
+      //     const chatMessages = await this.redisClient.lrange(key, 0, -1);
+      //     messages.push(...chatMessages.map(msg => JSON.parse(msg)));
+      //   }
+      //   return messages;
+      // }
 
       // 2. Fallback to MongoDB
       const chats = await Chat.find({ 
