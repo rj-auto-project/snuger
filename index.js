@@ -7,10 +7,7 @@ import rateLimitPlugin from "./src/plugin/ratelimiter.js";
 import fastifyCors from "@fastify/cors";
 import { errorHandler } from "./src/utils/error.js";
 import { registerRoutes } from "./src/routes/index.js";
-import Redis from 'ioredis';
 import fastifyIO from 'fastify-socket.io';
-import { randomBytes } from 'crypto';
-import { createAdapter } from '@socket.io/redis-adapter';
 import { HybridMessageStore } from './src/service/message.service.js';
 import { InMemorySessionStore } from './src/service/sessionStore.service.js';
 
@@ -64,7 +61,7 @@ app.get("/", async (request, reply) => {
 
 app.register(fastifyIO, {
   cors: {
-    origin: "http://localhost:8080",
+    origin: "*",
     methods: ["GET", "POST"],
     credentials: true
   },
@@ -89,8 +86,8 @@ app.ready(err => {
 
   const authenticateSocket = async (socket, next) => {
     try {
-      const sessionID = socket.handshake.auth && socket.handshake.auth.sessionID;
-      if (sessionID) {
+      const sessionID = socket.handshake.auth && socket.handshake.auth.userID;
+      if (sessionID && sessionID !== 'undefined') {
         const session = await sessionStore.findSession(sessionID);
         if (session) {
           socket.sessionID = sessionID;
@@ -104,7 +101,6 @@ app.ready(err => {
       if (!username) {
         return next(new Error('invalid username'));
       }
-
       // random userID
       socket.sessionID = userID;
       socket.userID = userID
@@ -119,7 +115,7 @@ app.ready(err => {
 
   app.io.on('connection', async (socket) => {
     // persist session
-    sessionStore.saveSession(socket.sessionID, {
+    sessionStore.saveSession(socket.userID, {
       userID: socket.userID,
       username: socket.username,
       connected: true,
@@ -176,7 +172,6 @@ app.ready(err => {
         from: socket.userID,
         to,
       };
-      console.log('Message:', message);
       socket.to(to).to(socket.userID).emit('private message', message);
       try {
         await messageStore.saveMessage(message);
