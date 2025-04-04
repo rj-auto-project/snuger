@@ -91,7 +91,7 @@ export const getMessagesOfChatById = async (request, reply) => {
     return reply.send({
       success: true,
       data: {
-        messages: messages.reverse(), // Return messages in chronological order
+        messages, // Return messages in chronological order
         pagination: {
           total: totalMessages,
           page,
