@@ -22,7 +22,7 @@ export const searchResult = async (req, reply) => {
       userCoords,
       maxDistance = 10000,
     } = req.body;
-    
+
     const results = {
       user_search: [],
       snugs_text_result: [],
@@ -33,107 +33,139 @@ export const searchResult = async (req, reply) => {
       { _id: new mongoose.Types.ObjectId(currentUserId) },
       { projection: { groupIDs: 1 } }
     );
-
     // Only perform user search if query starts with @
-    if (searchQuery.startsWith('@')) {
-      const userQuery = searchQuery.substring(1); // Remove @ symbol
-      const userSearchPipeline = [
-        {
-          $search: {
-            index: "users_index",
-            compound: {
-              should: [
-                {
-                  autocomplete: {
-                    query: userQuery,
-                    path: "username",
-                    tokenOrder: "sequential",
-                    fuzzy: { maxEdits: 2 },
+    if (searchQuery.startsWith("@")) {
+      try {
+        const userQuery = searchQuery.substring(1); // Remove @ symbol
+        const userSearchPipeline = [
+          {
+            $search: {
+              index: "users_index",
+              compound: {
+                should: [
+                  {
+                    autocomplete: {
+                      query: userQuery,
+                      path: "username",
+                      tokenOrder: "sequential",
+                      fuzzy: { maxEdits: 2 },
+                    },
                   },
-                },
-                {
-                  text: {
-                    query: userQuery,
-                    path: "name",
-                    fuzzy: { maxEdits: 2 },
+                  {
+                    text: {
+                      query: userQuery,
+                      path: "name",
+                      fuzzy: { maxEdits: 2 },
+                    },
                   },
-                },
-              ],
-            },
-          },
-        },
-        {
-          $match: {
-            location: {
-              $geoWithin: {
-                $centerSphere: [
-                  [userCoords.longitude, userCoords.latitude],
-                  maxDistance / 6378100, // Convert meters to radians
                 ],
               },
             },
           },
-        },
-        {
-          $project: {
-            _id: 1,
-            name: 1,
-            username: 1,
-            profileImage: 1,
-            snugScore: 1,
-            location: 1,
-            groupIDs: 1,
-            score: { $meta: "searchScore" },
-            commonGroupIds: {
-              $setIntersection: ["$groupIDs", currentUser.groupIDs || []],
-            },
-            commonGroupsCount: {
-              $size: {
-                $setIntersection: ["$groupIDs", currentUser.groupIDs || []],
+          // {
+          //   $match: {
+          //     location: {
+          //       $geoWithin: {
+          //         $centerSphere: [
+          //           [userCoords.longitude, userCoords.latitude],
+          //           maxDistance / 6378100, // Convert meters to radians
+          //         ],
+          //       },
+          //     },
+          //   },
+          // },
+          {
+            $project: {
+              _id: 1,
+              name: 1,
+              username: 1,
+              profileImage: 1,
+              snugScore: 1,
+              location: 1,
+              groupIDs: 1,
+              score: { $meta: "searchScore" },
+              commonGroupIds: {
+                $cond: {
+                  if: {
+                    $and: [
+                      { $isArray: "$groupIDs" },
+                      {
+                        $ne: [{ $ifNull: [currentUser.groupIDs, null] }, null],
+                      },
+                    ],
+                  },
+                  then: {
+                    $setIntersection: ["$groupIDs", currentUser.groupIDs || []],
+                  },
+                  else: [],
+                },
+              },
+              commonGroupsCount: {
+                $cond: {
+                  if: {
+                    $and: [
+                      { $isArray: "$groupIDs" },
+                      {
+                        $ne: [{ $ifNull: [currentUser.groupIDs, null] }, null],
+                      },
+                    ],
+                  },
+                  then: {
+                    $size: {
+                      $setIntersection: [
+                        "$groupIDs",
+                        currentUser.groupIDs || [],
+                      ],
+                    },
+                  },
+                  else: 0,
+                },
               },
             },
           },
-        },
-        {
-          $lookup: {
-            from: "groups",
-            let: { commonIds: "$commonGroupIds" },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $in: [{ $toString: "$_id" }, "$$commonIds"],
+          {
+            $lookup: {
+              from: "groups",
+              let: { commonIds: "$commonGroupIds" },
+              pipeline: [
+                {
+                  $match: {
+                    $expr: {
+                      $in: [{ $toString: "$_id" }, "$$commonIds"],
+                    },
                   },
                 },
-              },
-              {
-                $project: {
-                  _id: 1,
-                  name: 1,
+                {
+                  $project: {
+                    _id: 1,
+                    name: 1,
+                  },
                 },
-              },
-            ],
-            as: "commonGroups",
-          },
-        },
-        {
-          $addFields: {
-            // Optionally boost score based on number of common groups
-            adjustedScore: {
-              $add: [
-                { $meta: "searchScore" },
-                { $multiply: ["$commonGroupsCount", 0.1] }, // Adjust multiplier as needed
               ],
+              as: "commonGroups",
             },
           },
-        },
-        { $sort: { adjustedScore: -1 } },
-        { $limit: 5 },
-      ];
+          {
+            $addFields: {
+              // Optionally boost score based on number of common groups
+              adjustedScore: {
+                $add: [
+                  { $meta: "searchScore" },
+                  { $multiply: ["$commonGroupsCount", 0.1] }, // Adjust multiplier as needed
+                ],
+              },
+            },
+          },
+          { $sort: { adjustedScore: -1 } },
+          { $limit: 5 },
+        ];
 
-      const geoSearchResult = usersCollection.aggregate(userSearchPipeline);
-      for await (const doc of geoSearchResult) {
-        results["user_search"].push(doc);
+        const geoSearchResult = usersCollection.aggregate(userSearchPipeline);
+        for await (const doc of geoSearchResult) {
+          results["user_search"].push(doc);
+        }
+      } catch (error) {
+        console.log(error);
       }
     } else {
       // Only perform post searches if query doesn't start with @
@@ -175,11 +207,18 @@ export const searchResult = async (req, reply) => {
             isInCommonGroup: {
               $cond: {
                 if: {
-                  $in: [
-                    "$groupID",
-                    currentUser.groupIDs.map(
-                      (id) => new mongoose.Types.ObjectId(id)
-                    ),
+                  $and: [
+                    { $ne: [{ $ifNull: [currentUser.groupIDs, null] }, null] },
+                    {
+                      $in: [
+                        "$groupID",
+                        currentUser.groupIDs
+                          ? currentUser.groupIDs.map(
+                              (id) => new mongoose.Types.ObjectId(id)
+                            )
+                          : [],
+                      ],
+                    },
                   ],
                 },
                 then: true,
@@ -296,11 +335,18 @@ export const searchResult = async (req, reply) => {
             isInCommonGroup: {
               $cond: {
                 if: {
-                  $in: [
-                    "$groupID",
-                    currentUser.groupIDs.map(
-                      (id) => new mongoose.Types.ObjectId(id)
-                    ),
+                  $and: [
+                    { $ne: [{ $ifNull: [currentUser.groupIDs, null] }, null] },
+                    {
+                      $in: [
+                        "$groupID",
+                        currentUser.groupIDs
+                          ? currentUser.groupIDs.map(
+                              (id) => new mongoose.Types.ObjectId(id)
+                            )
+                          : [],
+                      ],
+                    },
                   ],
                 },
                 then: true,
