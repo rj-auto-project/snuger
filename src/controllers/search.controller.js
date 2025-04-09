@@ -29,10 +29,14 @@ export const searchResult = async (req, reply) => {
       snugs_vector_result: [],
     };
 
-    const currentUser = await usersCollection.findOne(
-      { _id: new mongoose.Types.ObjectId(currentUserId) },
-      { projection: { groupIDs: 1 } }
-    );
+    let currentUser = null;
+    if (currentUserId) {
+      currentUser = await usersCollection.findOne(
+        { _id: new mongoose.Types.ObjectId(currentUserId) },
+        { projection: { groupIDs: 1 } }
+      );
+    }
+
     // Only perform user search if query starts with @
     if (searchQuery.startsWith("@")) {
       try {
@@ -62,18 +66,6 @@ export const searchResult = async (req, reply) => {
               },
             },
           },
-          // {
-          //   $match: {
-          //     location: {
-          //       $geoWithin: {
-          //         $centerSphere: [
-          //           [userCoords.longitude, userCoords.latitude],
-          //           maxDistance / 6378100, // Convert meters to radians
-          //         ],
-          //       },
-          //     },
-          //   },
-          // },
           {
             $project: {
               _id: 1,
@@ -89,13 +81,12 @@ export const searchResult = async (req, reply) => {
                   if: {
                     $and: [
                       { $isArray: "$groupIDs" },
-                      {
-                        $ne: [{ $ifNull: [currentUser.groupIDs, null] }, null],
-                      },
+                      { $ne: [currentUser, null] },
+                      { $ne: [{ $ifNull: [currentUser?.groupIDs, null] }, null] },
                     ],
                   },
                   then: {
-                    $setIntersection: ["$groupIDs", currentUser.groupIDs || []],
+                    $setIntersection: ["$groupIDs", currentUser?.groupIDs || []],
                   },
                   else: [],
                 },
@@ -105,17 +96,13 @@ export const searchResult = async (req, reply) => {
                   if: {
                     $and: [
                       { $isArray: "$groupIDs" },
-                      {
-                        $ne: [{ $ifNull: [currentUser.groupIDs, null] }, null],
-                      },
+                      { $ne: [currentUser, null] },
+                      { $ne: [{ $ifNull: [currentUser?.groupIDs, null] }, null] },
                     ],
                   },
                   then: {
                     $size: {
-                      $setIntersection: [
-                        "$groupIDs",
-                        currentUser.groupIDs || [],
-                      ],
+                      $setIntersection: ["$groupIDs", currentUser?.groupIDs || []],
                     },
                   },
                   else: 0,
@@ -208,11 +195,12 @@ export const searchResult = async (req, reply) => {
               $cond: {
                 if: {
                   $and: [
-                    { $ne: [{ $ifNull: [currentUser.groupIDs, null] }, null] },
+                    { $ne: [currentUser, null] },
+                    { $ne: [{ $ifNull: [currentUser?.groupIDs, null] }, null] },
                     {
                       $in: [
                         "$groupID",
-                        currentUser.groupIDs
+                        currentUser?.groupIDs
                           ? currentUser.groupIDs.map(
                               (id) => new mongoose.Types.ObjectId(id)
                             )
@@ -336,11 +324,12 @@ export const searchResult = async (req, reply) => {
               $cond: {
                 if: {
                   $and: [
-                    { $ne: [{ $ifNull: [currentUser.groupIDs, null] }, null] },
+                    { $ne: [currentUser, null] },
+                    { $ne: [{ $ifNull: [currentUser?.groupIDs, null] }, null] },
                     {
                       $in: [
                         "$groupID",
-                        currentUser.groupIDs
+                        currentUser?.groupIDs
                           ? currentUser.groupIDs.map(
                               (id) => new mongoose.Types.ObjectId(id)
                             )
