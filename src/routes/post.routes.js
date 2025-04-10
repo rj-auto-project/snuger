@@ -7,6 +7,7 @@ import {
   getTopPosts,
   getPostsByUserId,
   getHotsPosts,
+  getPostById,
 } from "../controllers/getAllPost.controller.js";
 
 export const postRoutes = async (fastify) => {
@@ -22,7 +23,7 @@ export const postRoutes = async (fastify) => {
 
   // delete post
   fastify.delete("/:postId", deletePost);
-
+  fastify.get("/:id", getPostById);
   // get post
   fastify.get("/location", getPostsByLocation);
   fastify.get("/group", getGroupPosts);

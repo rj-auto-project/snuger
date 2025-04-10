@@ -401,3 +401,50 @@ export const getHotsPosts = async (req, reply) => {
       .send({ error: "Failed to fetch hot posts", details: error.message });
   }
 };
+
+export const getPostById = async (req, reply) => {
+  const { id } = req.params;
+
+  if (!id) {
+    return reply.status(400).send({
+      error: "Post ID is required"
+    });
+  }
+
+  try {
+    const post = await Post.findById(id)
+      .select("-embedding")
+      .populate({
+        path: "userId",
+        select: "username profileImage name",
+        model: "User",
+        options: { lean: true }
+      })
+      .lean()
+      .transform(doc => {
+        if (!doc) return null;
+        const transformed = { ...doc };
+        transformed.user = transformed.userId;
+        delete transformed.userId;
+        return transformed;
+      });
+
+    if (!post) {
+      return reply.status(404).send({
+        error: "Post not found"
+      });
+    }
+
+    reply.send({
+      success: true,
+      post
+    });
+
+  } catch (error) {
+    console.error("Error fetching post:", error);
+    reply.status(500).send({
+      error: "Failed to fetch post",
+      details: error.message
+    });
+  }
+};
