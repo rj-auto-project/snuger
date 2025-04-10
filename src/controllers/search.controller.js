@@ -238,6 +238,9 @@ export const searchResult = async (req, reply) => {
             totalComment: 1,
             createdAt: 1,
             isAnonymous: 1,
+            images:1,
+            videos:1,
+            audios:1,
             score: { $meta: "searchScore" },
             group: {
               $cond: {
@@ -367,6 +370,9 @@ export const searchResult = async (req, reply) => {
             totalComment: 1,
             createdAt: 1,
             isAnonymous: 1,
+            images:1,
+            videos:1,
+            audios:1,
             score: { $meta: "vectorSearchScore" },
             group: {
               $cond: {
