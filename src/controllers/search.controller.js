@@ -284,7 +284,9 @@ export const searchResult = async (req, reply) => {
       const textSearchResults = await postsCollection
         .aggregate(postSearchPipeline)
         .toArray();
-      results["snugs_text_result"] = textSearchResults;
+      
+      // Store text results temporarily
+      const textResults = new Map(textSearchResults.map(post => [post._id.toString(), post]));
 
       // Vector search pipeline
       const queryEmbedding = await getEmbedding(searchQuery);
@@ -415,8 +417,26 @@ export const searchResult = async (req, reply) => {
 
       const snugSearchResult = postsCollection.aggregate(vectorSearchPipeline);
       for await (const doc of snugSearchResult) {
-        results["snugs_vector_result"].push(doc);
+        const docId = doc._id.toString();
+        if (textResults.has(docId)) {
+          // If post exists in both searches, keep the one with higher score
+          const textResult = textResults.get(docId);
+          if (doc.adjustedScore > textResult.adjustedScore) {
+            textResults.set(docId, doc);
+          }
+        } else {
+          textResults.set(docId, doc);
+        }
       }
+
+      // Convert merged results back to array and sort by score
+      const mergedResults = Array.from(textResults.values())
+        .sort((a, b) => b.adjustedScore - a.adjustedScore)
+        .slice(0, 15); // Limit total results to 15
+
+      results["snugs_results"] = mergedResults;
+      delete results["snugs_vector_result"]; // No longer needed since results are merged
+      delete results["snugs_text_result"]; // No longer needed since results are merged
     }
 
     return reply.status(200).send(results);
