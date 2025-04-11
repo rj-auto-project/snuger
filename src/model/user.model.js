@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema(
     phoneNumber: { type: Number, unique: true, required: true },
     username: { type: String, unique: true, required: true },
     name: { type: String },
-    profileImage: { type: String, default: "default-profile.jpg" },
+    profileImage: { type: String, default: "" },
     snugScore: { type: Number, default: 0 },
     totalSnugs: { type: Number, default: 0 },
     snugRank: { type: Number, default: 0 },
@@ -17,7 +17,7 @@ const userSchema = new mongoose.Schema(
     location: {
       type: {
         type: String,
-        enum: ["Point"], // GeoJSON type must be "Point"
+        enum: ["Point"], 
         required: true,
         default: "Point",
       },
