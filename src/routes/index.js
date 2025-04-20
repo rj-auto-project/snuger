@@ -12,6 +12,7 @@ import { chatRoutes } from "./chat.routes.js";
 import { authRoutes } from "./auth.routes.js";
 import { getTopSnugerRoutes } from "./topSuger.routes.js";
 import { notificationRoutes } from "./notification.routes.js";
+import contentFilterRoutes from "./contentFilter.routes.js";
 
 export const registerRoutes = async (fastify) => {
   fastify.register(authRoutes, { prefix: "/api/auth" });
@@ -28,4 +29,5 @@ export const registerRoutes = async (fastify) => {
   fastify.register(getTopSnugerRoutes, { prefix: "/api/topSnuger" });
   fastify.register(chatRoutes, { prefix: "/api/chats" });
   fastify.register(notificationRoutes, { prefix: "/api/notification" });
+  fastify.register(contentFilterRoutes, { prefix: "/api/content-filter" })
 };
