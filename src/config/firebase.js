@@ -1,12 +1,9 @@
 import admin from "firebase-admin";
-import path from "path";
-import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
+const firebase= process.env.FIREBASE_SERVICE_ACCOUNT;
+const firebaseJson= JSON.parse(firebase)
 admin.initializeApp({
-  credential: admin.credential.cert(path.resolve(__dirname, "firebase.json")),
+  credential: admin.credential.cert(firebaseJson),
 });
 
 export const auth = admin.auth();
